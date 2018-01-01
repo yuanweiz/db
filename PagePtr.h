@@ -29,6 +29,7 @@ public:
     ~PagePtr();
     operator bool() const noexcept {return ptr_.operator bool();}
     PageNo_t pageNo() const noexcept{return ptr_->pageNo;}
+    PageSz_t pageSize() const noexcept{return ptr_->pageSize;}
 private:
     PagePtr(PageNo_t page,PageSz_t sz);
     PagePtr(PageNo_t page,PageSz_t sz, const EvictionCallback&);

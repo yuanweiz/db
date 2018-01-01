@@ -20,11 +20,8 @@ class Pager::Impl{
     using HashMap=std::unordered_map<uint32_t,MapEntry>;
 public:
     Impl(FILE* fp, PageSz_t sz, size_t lruThreshold)
-        :pageSz_(sz),lruThreshold_(lruThreshold),fp_(fp,&fclose)
+        :pageSz_(sz),largestGet_(0),lruThreshold_(lruThreshold),fp_(fp,&fclose)
     {
-    }
-    PageNo_t pageCount()const{
-        auto fp = const_cast<FILE*>(fp_.get());
         ::fseek(fp,0,SEEK_END);
         auto off_int64 = ftell(fp);
         if (off_int64 <0){
@@ -36,12 +33,21 @@ public:
         auto off = static_cast<uint32_t>(off_int64);
         uint32_t pageSz = pageSz_;
         uint32_t roundUp = (off % pageSz) ? 1: 0;
-        return PageNo_t(roundUp + off/pageSz);
+        uint32_t initVal = off /pageSz + roundUp;
+        if (initVal>0)--initVal;
+        largestGet_= PageNo_t(initVal );
+    }
+    PageNo_t pageCount()const{ //automatically round up
+        uint32_t  ret = largestGet_;
+        return PageNo_t(ret+1);
     }
     PagePtr getPage(PageNo_t _page){
         auto onExit = [this](){sanityCheck();};
         ScopeExit<decltype(onExit)> exit(onExit);
         uint32_t page = _page;
+        if (page > largestGet_){
+            largestGet_ = _page;
+        }
         auto mapIter = map_.find(page);
         if (mapIter!=map_.end()){
             auto& entry= mapIter->second;
@@ -100,6 +106,7 @@ public:
 private:
     //dumb implementation, never evicts
     PageSz_t pageSz_;
+    PageNo_t largestGet_;
     size_t lruThreshold_;
     std::unique_ptr<FILE,decltype(&fclose)> fp_;
     //std::unordered_map<uint32_t,PagePtr> map_;

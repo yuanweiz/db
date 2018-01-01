@@ -8,8 +8,9 @@ public:
     explicit PageAllocator(const std::string& fname);
     ~PageAllocator();
     PagePtr allocate();
-    void deallocate(const PagePtr &);
+    void deallocate( PagePtr &);
     void format();
+    uint32_t maxGroup()const;
     bool formatted()const;
 private:
     class Impl;

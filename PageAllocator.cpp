@@ -28,40 +28,68 @@ public:
         if (state_==State::None){
             throw Exception("Hasn't yet been formatted");
         }
-        return PagePtr();
+        auto nGroups = maxGroup();
+        for (uint32_t i=0;i<nGroups;++i){
+            auto bitmapPage = getBitmap(i,false);
+            BitVector bitmap(bitmapPage.get());
+            for (uint32_t j=0;j<kPagesPerGroup;++j){
+                if (!bitmap.get(j)){
+                    bitmap.set(j,true);
+                    return pager_.getPage(PageNo_t(i*kPagesPerGroup+j));
+                }
+            }
+        }
+        //allocate a new Group
+        auto & bitmapPage = getBitmap (nGroups,true);
+        //return page 2
+        //if (nGroups+1 != maxGroup()){
+        //    //__asm__("int3");
+        //}
+        assert(nGroups + 1== maxGroup()); //expanded
+        BitVector bitmap(bitmapPage.get());
+        bitmap.set(2,true);
+        return pager_.getPage(PageNo_t(nGroups*kPagesPerGroup+2));
     }
-    void freePage(const PagePtr&){
+    void freePage(const PagePtr& pagePtr){
         if (state_==State::None){
             throw Exception("Hasn't yet been formatted");
         }
+        uint32_t page = pagePtr.pageNo();
+        auto & ptr = getBitmap(page/kPagesPerGroup,true);
+        BitVector bitmap ( ptr.get());
+        auto off = page % kPagesPerGroup;
+        if (!bitmap.get(off)){
+            throw Exception("trying to free a page that hasn't been allocated");
+        }
+        bitmap.set(off,false);
     }
     bool formatted()const{
         return state_ == State::Formatted;
     }
     void format(){
-        bitmapPages_.clear();
         state_ = State::Formatted;
+        bitmapPages_.clear();
         auto ptr = superBlockPtr_.get();
         memcpy(ptr,kMagic,sizeof(kMagic));
-        auto nPages = pager_.pageCount();
-        auto nGroups = nPages / kPagesPerGroup;
-        auto rest = nPages % kPagesPerGroup;
+        auto nGroups = maxGroup();
         for (uint32_t i=0;i<nGroups;++i){
             rewriteBitmap(i);
         }
-        if (rest){
-            rewriteBitmap(nGroups);
+    }
+    uint32_t maxGroup()const{
+        if (state_!=State::Formatted){
+            throw Exception("not formatted, maxGroup() unavailable");
         }
+        auto nPages= pager_.pageCount() ;
+        uint32_t base = nPages/ kPagesPerGroup;
+        uint32_t roundUp = nPages%kPagesPerGroup? 1:0;
+        return base + roundUp;
     }
 private:
     void rewriteBitmap(uint32_t groupNo){
-        auto & bitmapPage = getBitmap(groupNo);
-        auto ptr = bitmapPage.get();
-        BitVector bitmap(ptr);
-        bitmap.set(0,true);
-        bitmap.set(1,true);
+        getBitmap(groupNo,true);
     }
-    PagePtr& getBitmap(uint32_t groupNo){
+    PagePtr& getBitmap(uint32_t groupNo, bool rewrite){
         auto it = bitmapPages_.find(groupNo);
         if (it != bitmapPages_.end()){
             return it->second;
@@ -69,7 +97,15 @@ private:
         PageNo_t page(groupNo* kPagesPerGroup+1);
         auto ret = bitmapPages_.insert({groupNo,pager_.getPage(page)});
         assert(ret.second);
-        return ret.first->second;
+        auto & bitmapPage = ret.first->second;
+        if (rewrite){
+            auto ptr = bitmapPage.get();
+            ::bzero(ptr,bitmapPage.pageSize());
+            BitVector bitmap(ptr); 
+            bitmap.set(0,true);
+            bitmap.set(1,true);
+        }
+        return bitmapPage;
     }
     enum class State {
         None, Formatted
@@ -88,6 +124,18 @@ void PageAllocator::format(){
 }
 bool PageAllocator::formatted()const{
     return pImpl_->formatted();
+}
+
+PagePtr PageAllocator::allocate(){
+    return pImpl_->allocPage();
+}
+
+void PageAllocator::deallocate(PagePtr& ptr){
+    return pImpl_->freePage(ptr);
+}
+
+uint32_t PageAllocator::maxGroup()const{
+    return pImpl_->maxGroup();
 }
 
 PageAllocator::~PageAllocator(){
