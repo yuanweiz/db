@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.6)
 
-add_library (db Pager.cpp PagePtr.cpp PageAllocator.cpp Exception.cpp )
+add_library (db Pager.cpp PagePtr.cpp PageAllocator.cpp Exception.cpp TableDesc.cpp)
 
 include_directories(${PROJECT_SOURCE_DIR})
 set(CXX_FLAGS
