@@ -7,7 +7,7 @@
 #include "PagePtr.h"
 class Pager{
 public:
-    Pager(const std::string &fname, PageSz_t );
+    Pager(const std::string &fname, PageSz_t ,size_t lruThreshold=0);
     PagePtr getPage(PageNo_t);
     ~Pager();
 private:

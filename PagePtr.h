@@ -6,6 +6,15 @@
 #include "Types.h"
 class PagePtr{
 public: 
+    //legacy code with design flaws
+    class PageData{
+        public:
+            PageSz_t pageSize;
+            PageNo_t pageNo;
+            bool dirty;
+            char buf[1];
+    };
+    PagePtr(const std::shared_ptr<PageData>&ptr):ptr_(ptr){}
     using EvictionCallback= 
         std::function<void(void*,PageSz_t,PageNo_t)>;
     PagePtr(const PagePtr&)=default;
@@ -13,11 +22,13 @@ public:
     static PagePtr fromFile(FILE*, PageSz_t,PageNo_t,const EvictionCallback&);
     char* get();
     const char* getConst()const;
+    bool operator==(const PagePtr&rhs){return ptr_==rhs.ptr_;}
+    bool operator!=(const PagePtr&rhs){return ptr_!=rhs.ptr_;}
+    std::weak_ptr<PageData> getWeakPtr();
     ~PagePtr();
     operator bool() const noexcept {return ptr_.operator bool();}
+    PageNo_t pageNo() const noexcept{return ptr_->pageNo;}
 private:
-    class PageData;
-    PagePtr(const std::shared_ptr<PageData>&);
     PagePtr(PageNo_t page,PageSz_t sz);
     PagePtr(PageNo_t page,PageSz_t sz, const EvictionCallback&);
     std::shared_ptr<PageData> ptr_;

@@ -1,4 +1,4 @@
-foreach( filename  pageptr_test)
+foreach( filename  pageptr_test pager_test)
     add_executable( ${filename} ${filename}.cpp)
     target_link_libraries( ${filename}  db ${GTEST_LIBRARIES} )
     add_test ( ${filename} ${filename})

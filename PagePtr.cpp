@@ -6,13 +6,6 @@
 #include "Types.h"
 using namespace std;
 using Callback=PagePtr::EvictionCallback;
-class PagePtr::PageData{
-public:
-    PageSz_t pageSize;
-    PageNo_t pageNo;
-    bool dirty;
-    char buf[1];
-};
 
 
 PagePtr::~PagePtr(){
@@ -26,6 +19,10 @@ PagePtr::PagePtr(PageNo_t page,PageSz_t sz){
     rawPtr->pageNo = page;
     rawPtr->pageSize = sz;
     ptr_.reset(rawPtr);
+}
+
+weak_ptr<PagePtr::PageData> PagePtr::getWeakPtr(){
+    return ptr_;
 }
 
 PagePtr::PagePtr(PageNo_t page,PageSz_t sz,const EvictionCallback& cb){
@@ -51,8 +48,9 @@ PagePtr PagePtr::fromFile(FILE* fp, PageSz_t sz,PageNo_t page){
     PagePtr ptr(page,sz);
     const char * cp = ptr.getConst();
     char * p = const_cast<char*>(cp);
-    auto ret = fread(p,1,sz,fp);
-    printf("fread return %lu, (%u~%lu)\n",ret,offset,offset+ret);
+    //auto ret = fread(p,1,sz,fp);
+    fread(p,1,sz,fp); //discard return value
+    //printf("fread return %lu, (%u~%lu)\n",ret,offset,offset+ret);
     //no need to append zeros
     ::fseek(fp,oldPos,SEEK_SET);
     return ptr; //exception safety
@@ -65,8 +63,7 @@ PagePtr PagePtr::fromFile(FILE* fp, PageSz_t sz,PageNo_t page, const EvictionCal
     PagePtr ptr(page,sz,cb);
     const char * cp = ptr.getConst();
     char * p = const_cast<char*>(cp);
-    auto ret = fread(p,1,sz,fp);
-    printf("fread return %lu, (%u~%lu)\n",ret,offset,offset+ret);
+    fread(p,1,sz,fp);
     //no need to append zeros
     ::fseek(fp,oldPos,SEEK_SET);
     return ptr; //exception safety
