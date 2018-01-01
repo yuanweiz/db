@@ -28,27 +28,29 @@ public:
         if (state_==State::None){
             throw Exception("Hasn't yet been formatted");
         }
+        uint32_t suggestedGroup=lastAlloc_ / kPagesPerGroup;
+        uint32_t suggestedPage=lastAlloc_ % kPagesPerGroup;
         auto nGroups = maxGroup();
         for (uint32_t i=0;i<nGroups;++i){
-            auto bitmapPage = getBitmap(i,false);
+            auto ii=(i+suggestedGroup)%nGroups;
+            auto bitmapPage = getBitmap(ii,false);
             BitVector bitmap(bitmapPage.get());
             for (uint32_t j=0;j<kPagesPerGroup;++j){
-                if (!bitmap.get(j)){
-                    bitmap.set(j,true);
-                    return pager_.getPage(PageNo_t(i*kPagesPerGroup+j));
+                uint32_t jj = (j+ suggestedPage)%kPagesPerGroup;
+                if (!bitmap.get(jj)){
+                    bitmap.set(jj,true);
+                    lastAlloc_ = ii*kPagesPerGroup+jj;
+                    return pager_.getPage(PageNo_t(lastAlloc_));
                 }
             }
         }
         //allocate a new Group
         auto & bitmapPage = getBitmap (nGroups,true);
-        //return page 2
-        //if (nGroups+1 != maxGroup()){
-        //    //__asm__("int3");
-        //}
         assert(nGroups + 1== maxGroup()); //expanded
         BitVector bitmap(bitmapPage.get());
         bitmap.set(2,true);
-        return pager_.getPage(PageNo_t(nGroups*kPagesPerGroup+2));
+        lastAlloc_ =nGroups*kPagesPerGroup+2;
+        return pager_.getPage(PageNo_t(lastAlloc_));
     }
     void freePage(const PagePtr& pagePtr){
         if (state_==State::None){
@@ -110,6 +112,7 @@ private:
     enum class State {
         None, Formatted
     }state_;
+    uint32_t lastAlloc_ = 0;
     Pager pager_;
     PagePtr superBlockPtr_;
     std::unordered_map<size_t, PagePtr> bitmapPages_;
