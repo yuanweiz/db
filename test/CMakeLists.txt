@@ -1,0 +1,8 @@
+foreach( filename  pageptr_test)
+    add_executable( ${filename} ${filename}.cpp)
+    target_link_libraries( ${filename}  db ${GTEST_LIBRARIES} )
+    add_test ( ${filename} ${filename})
+endforeach()
+#add_executable( sample_test sample_test.cpp)
+#target_link_libraries( sample_test ${GTEST_LIBRARIES})
+#add_test ( sample_test sample_test)
