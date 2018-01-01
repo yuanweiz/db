@@ -9,6 +9,7 @@ class Pager{
 public:
     Pager(const std::string &fname, PageSz_t ,size_t lruThreshold=0);
     PagePtr getPage(PageNo_t);
+    PageNo_t pageCount()const;
     ~Pager();
 private:
     class Impl;

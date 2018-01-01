@@ -8,7 +8,7 @@ public:
     PageSz_t()=default;
     PageSz_t(const PageSz_t&)=default;
     explicit PageSz_t(uint32_t v):v_(v){}
-    operator uint32_t(){
+    operator uint32_t()const{
         return v_;
     }
 private:
@@ -19,7 +19,7 @@ public:
     PageNo_t()=default;
     PageNo_t(const PageNo_t&)=default;
     explicit PageNo_t(uint32_t v):v_(v){}
-    operator uint32_t(){
+    operator uint32_t()const{
         return v_;
     }
 private:

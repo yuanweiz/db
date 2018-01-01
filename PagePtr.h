@@ -14,6 +14,7 @@ public:
             bool dirty;
             char buf[1];
     };
+    PagePtr()=default;
     PagePtr(const std::shared_ptr<PageData>&ptr):ptr_(ptr){}
     using EvictionCallback= 
         std::function<void(void*,PageSz_t,PageNo_t)>;

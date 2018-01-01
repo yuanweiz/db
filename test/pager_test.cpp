@@ -11,7 +11,7 @@ class PagerTest: public ::testing::Test{
         fclose(fp); //now it is empty
     }
     void fillRandomData(size_t sz){
-        randomData.resize(sz); // 4k trunk
+        randomData.resize(sz/4); // 4k trunk
         srand(0);
         for (auto & i : randomData){
             i=rand();
@@ -65,7 +65,7 @@ TEST_F(PagerTest, WriteTwice){
 }
 TEST_F (PagerTest, WithEviction){
     uint32_t pageSz = 4096;
-    fillRandomData(1024*10);
+    fillRandomData(4096*10);
     auto nPages = randomData.size()*4/pageSz;
     {
         Pager pager("/tmp/empty", PageSz_t(pageSz), 1);
@@ -107,6 +107,16 @@ TEST_F (PagerTest, ShouldNotCreateTwoBuffers){
         auto ptr4 = pager.getPage(PageNo_t(1));
         ASSERT_EQ(ptr1,ptr4);
     }
+}
+
+TEST_F(PagerTest, BlockCountRoundUp){
+    auto fp=fopen("/tmp/empty","w");
+    fillRandomData(10000);
+    ::fwrite(randomData.data(), 1, randomData.size()*4,fp);
+    ASSERT_EQ(10000,ftell(fp));
+    fclose(fp);
+    Pager pager("/tmp/empty",PageSz_t(4096));
+    ASSERT_EQ(3,pager.pageCount());
 }
 
 int main (int argc,char**argv){

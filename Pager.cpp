@@ -1,6 +1,7 @@
 #include <list>
 #include <unordered_map>
 #include <assert.h>
+#include <limits.h>
 #include "Pager.h"
 #include "PagePtr.h"
 #include "Exception.h"
@@ -21,6 +22,21 @@ public:
     Impl(FILE* fp, PageSz_t sz, size_t lruThreshold)
         :pageSz_(sz),lruThreshold_(lruThreshold),fp_(fp,&fclose)
     {
+    }
+    PageNo_t pageCount()const{
+        auto fp = const_cast<FILE*>(fp_.get());
+        ::fseek(fp,0,SEEK_END);
+        auto off_int64 = ftell(fp);
+        if (off_int64 <0){
+            throw Exception("IO Error");
+        }
+        if (off_int64 > UINT_MAX){
+            throw Exception("File too large");
+        }
+        auto off = static_cast<uint32_t>(off_int64);
+        uint32_t pageSz = pageSz_;
+        uint32_t roundUp = (off % pageSz) ? 1: 0;
+        return PageNo_t(roundUp + off/pageSz);
     }
     PagePtr getPage(PageNo_t _page){
         auto onExit = [this](){sanityCheck();};
@@ -94,6 +110,9 @@ private:
 Pager::Pager(const string& fname, PageSz_t sz, size_t lruThreshold){
     FILE* fp = fopen(fname.c_str(), "r+");
     if (!fp){
+        fp = fopen(fname.c_str(),"w+");
+    }
+    if (!fp){
         throw Exception("open file failed");
     }
     pImpl_.reset(new Impl(fp,sz,lruThreshold));
@@ -101,6 +120,9 @@ Pager::Pager(const string& fname, PageSz_t sz, size_t lruThreshold){
 
 PagePtr Pager::getPage(PageNo_t _page){
     return pImpl_->getPage(_page);
+}
+PageNo_t Pager::pageCount()const{
+    return pImpl_->pageCount();
 }
 Pager::~Pager(){
 }
