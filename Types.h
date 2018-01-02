@@ -10,6 +10,8 @@ enum class StorageClass :int{
     VARINT,INT64,INT32,INT16, DOUBLE,FLOAT, TEXT,
 } ; 
 
+DataType storageClassToDataType(StorageClass);
+
 class PageSz_t {
 public:
     PageSz_t()=default;

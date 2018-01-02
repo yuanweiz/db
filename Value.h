@@ -49,6 +49,9 @@ public:
     static DataType classDataType(){
         return DataType::TEXT;
     }
+    const std::string& value()const{
+        return value_;
+    }
 private:
     std::string value_;
 };
