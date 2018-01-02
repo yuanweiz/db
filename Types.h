@@ -3,6 +3,13 @@
 #include <inttypes.h>
 #include <sys/types.h>
 
+enum class DataType : int{
+    INTEGER, REAL, TEXT,
+};
+enum class StorageClass :int{
+    VARINT,INT64,INT32,INT16, DOUBLE,FLOAT, TEXT,
+} ; 
+
 class PageSz_t {
 public:
     PageSz_t()=default;

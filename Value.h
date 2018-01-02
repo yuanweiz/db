@@ -30,6 +30,7 @@ public:
     static DataType classDataType(){
         return DataType::REAL;
     }
+    double value()const {return value_;}
 private:
     double value_;
 };
@@ -66,10 +67,12 @@ public:
     static DataType classDataType(){
         return DataType::INTEGER;
     }
+    int64_t value()const {return value_;}
 private:
     int64_t value_;
 };
 
 template <class T> T value_cast(Value*);
+template <class T> T value_cast(const Value*);
 
 #endif // __VALUE_H

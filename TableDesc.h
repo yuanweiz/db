@@ -3,29 +3,11 @@
 #include <string>
 #include <memory>
 #include <vector>
-enum class DataType : int{
-    INTEGER, REAL, TEXT,
-};
-enum class StorageClass :int{
-    VARINT,INT64,INT32,INT16, DOUBLE,FLOAT, TEXT,
-} ; 
+#include "Types.h"
 class Type{
 protected:
     Type (DataType);
 };
-
-class Value{
-protected:
-    Value (DataType);
-};
-
-class Storage{
-protected:
-    Storage(StorageClass);
-};
-
-template <class T>
-T* datatype_cast (Value&);
 
 class TableColumn{
 public:
@@ -57,6 +39,9 @@ class NewTable{
     ColumnList columns_;
 public:
 };
+class TableRow{
+};
+
 class TableDesc{
     using TableColumnPtr = std::unique_ptr<TableColumn>;
     using ColumnList = std::vector<std::unique_ptr<TableColumn>>;
