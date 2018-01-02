@@ -29,8 +29,8 @@ TEST_F(PagePtrTest, StdioBehavior){
 
 TEST_F(PagePtrTest, EmptyFile){
     std::vector<char>  emptyTrunk(4096);
-    auto ptr = PagePtr::fromFile(fp,sz,PageNo_t(0));
-    const auto content = ptr.getConst();
+    auto ptr = PageData::fromFile(fp,sz,PageNo_t(0));
+    const auto content = ptr->getConst();
     auto ret = memcmp(content, emptyTrunk.data(),emptyTrunk.size());
     ASSERT_EQ(ret,0);
 }
@@ -40,7 +40,7 @@ TEST_F(PagePtrTest, CorrectPosition){
     ASSERT_EQ(pos,0);
     fseek(fp,100,SEEK_SET); //out of bound
     {
-        auto ptr = PagePtr::fromFile(fp,sz,PageNo_t(0));
+        auto ptr = PageData::fromFile(fp,sz,PageNo_t(0));
     }
     ASSERT_EQ( 100, ftell(fp));
 }
@@ -56,8 +56,8 @@ TEST_F(PagePtrTest, SmallFile){
     auto ret = fwrite(smallFile.data(),1,100, fp);
     ASSERT_EQ(ret,100);
     smallFile.resize(4096); //rest of the part should be zero
-    auto ptr = PagePtr::fromFile(fp,sz,page);
-    auto buf = ptr.getConst();
+    auto ptr = PageData::fromFile(fp,sz,page);
+    auto buf = ptr->getConst();
     ASSERT_EQ(0,::memcmp(buf,smallFile.data(), smallFile.size()));
 }
 
@@ -74,12 +74,12 @@ TEST_F(PagePtrTest, WriteBack){
         ASSERT_EQ(size_,fwrite(ptr, 1,size_,fp));
     };
     {
-        auto ptr1 = PagePtr::fromFile(fp,sz,PageNo_t(0),deleter);
-        auto buf = ptr1.get(); //now it's dirty
+        auto ptr1 = PageData::fromFile(fp,sz,PageNo_t(0),deleter);
+        auto buf = ptr1->getNonConst(); //now it's dirty
         memcpy(buf,smallTrunk.data(),smallTrunk.size());
     }
-    auto ptr2 = PagePtr::fromFile(fp,sz,PageNo_t(0));
-    auto constBuf = ptr2.getConst();
+    auto ptr2 = PageData::fromFile(fp,sz,PageNo_t(0));
+    auto constBuf = ptr2->getConst();
     ASSERT_EQ(0,::memcmp(constBuf,smallTrunk.data(),smallTrunk.size()));
 }
 int main (int argc,char**argv){

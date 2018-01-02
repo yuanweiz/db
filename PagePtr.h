@@ -4,36 +4,28 @@
 #include <functional>
 #include <stdio.h>
 #include "Types.h"
-class PagePtr{
-public: 
-    //legacy code with design flaws
-    class PageData{
-        public:
-            PageSz_t pageSize;
-            PageNo_t pageNo;
-            bool dirty;
-            char buf[1];
-    };
-    PagePtr()=default;
-    PagePtr(const std::shared_ptr<PageData>&ptr):ptr_(ptr){}
-    using EvictionCallback= 
-        std::function<void(void*,PageSz_t,PageNo_t)>;
-    PagePtr(const PagePtr&)=default;
-    static PagePtr fromFile(FILE*, PageSz_t,PageNo_t);
+
+using EvictionCallback= 
+std::function<void(void*,PageSz_t,PageNo_t)>;
+class PageData;
+using PagePtr=std::shared_ptr<PageData>;
+class PageData{
+public:
+    static PagePtr fromFile(FILE* ,PageSz_t,PageNo_t);
     static PagePtr fromFile(FILE*, PageSz_t,PageNo_t,const EvictionCallback&);
-    char* get();
+    char *getNonConst();
     const char* getConst()const;
-    bool operator==(const PagePtr&rhs){return ptr_==rhs.ptr_;}
-    bool operator!=(const PagePtr&rhs){return ptr_!=rhs.ptr_;}
-    std::weak_ptr<PageData> getWeakPtr();
-    ~PagePtr();
-    operator bool() const noexcept {return ptr_.operator bool();}
-    PageNo_t pageNo() const noexcept{return ptr_->pageNo;}
-    PageSz_t pageSize() const noexcept{return ptr_->pageSize;}
+    void setDirty(bool b) {
+        dirty = b;
+    }
+    PageNo_t pageNo() const noexcept{return pageNo_;}
+    PageSz_t pageSize() const noexcept{return pageSize_;}
 private:
-    PagePtr(PageNo_t page,PageSz_t sz);
-    PagePtr(PageNo_t page,PageSz_t sz, const EvictionCallback&);
-    std::shared_ptr<PageData> ptr_;
+    static PageData* allocMemory(FILE*,PageNo_t,PageSz_t);
+    PageSz_t pageSize_;
+    PageNo_t pageNo_;
+    bool dirty;
+    char buf[1];
 };
 #endif // __PAGE_PTR_H
 

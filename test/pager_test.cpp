@@ -38,7 +38,7 @@ TEST_F(PagerTest, WriteWholeFile){
         Pager pager("/tmp/empty", PageSz_t(pageSz));
         for (uint32_t i=0;i<nPages;++i){
             auto ptr = pager.getPage( PageNo_t(i));
-            auto dst = ptr.get();
+            auto dst = ptr->getNonConst();
             auto src = randomData.data()+ (i*pageSz / 4);
             ::memcpy(dst,src,pageSz);
         }
@@ -55,7 +55,7 @@ TEST_F(PagerTest, WriteTwice){
         for (int j=0;j<2;++j){
             for (uint32_t i=0;i<nPages;++i){
                 auto ptr = pager.getPage( PageNo_t(i));
-                auto dst = ptr.get();
+                auto dst = ptr->getNonConst();
                 auto src = randomData.data()+ (i*pageSz / 4);
                 ::memcpy(dst,src,pageSz);
             }
@@ -72,7 +72,7 @@ TEST_F (PagerTest, WithEviction){
         for (int j=0;j<2;++j){
             for (uint32_t i=0;i<nPages;++i){
                 auto ptr = pager.getPage( PageNo_t(i));
-                auto dst = ptr.get();
+                auto dst = ptr->getNonConst();
                 auto src = randomData.data()+ (i*pageSz / 4);
                 ::memcpy(dst,src,pageSz);
             }
@@ -85,10 +85,10 @@ TEST_F (PagerTest, ShouldExpire){
     uint32_t pageSz = 4096;
     {
         Pager pager("/tmp/empty", PageSz_t(pageSz),2);
-        std::weak_ptr<PagePtr::PageData> wkPtr;
+        std::weak_ptr<PageData> wkPtr;
         {
             auto ptr1 = pager.getPage(PageNo_t(1));
-            wkPtr = ptr1.getWeakPtr();
+            wkPtr = ptr1;
         }
         auto ptr2 = pager.getPage(PageNo_t(2));
         auto ptr3 = pager.getPage(PageNo_t(3));

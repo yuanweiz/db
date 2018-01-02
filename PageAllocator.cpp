@@ -19,7 +19,7 @@ public:
         pager_(fname,PageSz_t(kPageSize))
     {
         superBlockPtr_ = pager_.getPage(PageNo_t(0));
-        const auto ptr = superBlockPtr_.getConst();
+        const auto ptr = superBlockPtr_->getConst();
         if (0==memcmp(ptr,kMagic,sizeof(kMagic))){
             state_ = State::Formatted;
         }
@@ -56,7 +56,7 @@ public:
         if (state_==State::None){
             throw Exception("Hasn't yet been formatted");
         }
-        uint32_t page = pagePtr.pageNo();
+        uint32_t page = pagePtr->pageNo();
         auto & ptr = getBitmap(page/kPagesPerGroup,true);
         BitVector bitmap ( ptr.get());
         auto off = page % kPagesPerGroup;
@@ -71,7 +71,7 @@ public:
     void format(){
         state_ = State::Formatted;
         bitmapPages_.clear();
-        auto ptr = superBlockPtr_.get();
+        auto ptr = superBlockPtr_->getNonConst();
         memcpy(ptr,kMagic,sizeof(kMagic));
         auto nGroups = maxGroup();
         for (uint32_t i=0;i<nGroups;++i){
@@ -102,7 +102,7 @@ private:
         auto & bitmapPage = ret.first->second;
         if (rewrite){
             auto ptr = bitmapPage.get();
-            ::bzero(ptr,bitmapPage.pageSize());
+            ::bzero(ptr,bitmapPage->pageSize());
             BitVector bitmap(ptr); 
             bitmap.set(0,true);
             bitmap.set(1,true);

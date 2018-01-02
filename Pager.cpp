@@ -11,10 +11,10 @@ class Pager::Impl{
     using LRUList=std::list<PagePtr>;
     struct MapEntry{
         MapEntry(PagePtr& ptr, LRUList::iterator it)
-            :wkPtr(ptr.getWeakPtr()), listIter(it)
+            :wkPtr(ptr), listIter(it)
         {
         }
-        std::weak_ptr<PagePtr::PageData> wkPtr;
+        std::weak_ptr<PageData> wkPtr;
         LRUList::iterator listIter;
     };
     using HashMap=std::unordered_map<uint32_t,MapEntry>;
@@ -56,7 +56,7 @@ public:
             tryTouch(entry);
             return PagePtr(sharedPtr);
         }
-        auto ptr= PagePtr::fromFile(fp_.get(), pageSz_,_page,
+        auto ptr= PageData::fromFile(fp_.get(), pageSz_,_page,
                 [this](void*buf, PageSz_t sz,PageNo_t pageNo){
                 writeBack(buf,sz,pageNo);
                 });
@@ -64,7 +64,7 @@ public:
         auto ret = map_.insert({page,{ptr,listIter}});
         assert(ret.second);(void)ret;
         if (lruThreshold_ >0 && list_.size() ){
-            uint32_t key = list_.back().pageNo();
+            uint32_t key = list_.back()->pageNo();
             //invalidate it
             auto it = map_.find(key);
             assert(it!=map_.end());
