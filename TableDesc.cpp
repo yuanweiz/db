@@ -22,13 +22,13 @@ std::unique_ptr<TableColumn> textColumn(const std::string& name){
 }
 
 std::unique_ptr<TableColumn> integerColumn(const std::string& name){
-    return std::unique_ptr<TableColumn>(new TableColumn(StorageClass::VARINT,name));
+    return std::unique_ptr<TableColumn>(new TableColumn(StorageClass::INT64,name));
 }
 
 std::unique_ptr<TableColumn> doubleColumn(const std::string& name){
     return std::unique_ptr<TableColumn>(new TableColumn(StorageClass::DOUBLE,name));
 }
-DataType TableColumn::storageClassToDataType(StorageClass storage){
+DataType storageClassToDataType(StorageClass storage){
     return storageClassToDataTypeMap[storage];
 }
 

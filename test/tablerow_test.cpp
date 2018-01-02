@@ -17,7 +17,26 @@ TEST(TableRowTest, Construct){
         delete value.clone();
     }
 }
-TEST(TableRowTest, Cast){
+
+size_t const_traverse(const TableRow & row){
+    size_t i=0;
+    for (auto & v: row){
+        std::cout<< &v;
+        ++i;
+    }
+    return i;
+}
+TEST(TableRowTest, Iterator){
+    TableRow row;
+    row << 42 << "text";
+    ASSERT_EQ(row.size(), 2);
+    size_t i=0;
+    for (auto & v: row){
+        std::cout<< &v;
+        ++i;
+    }
+    ASSERT_EQ(const_traverse(row),2);
+    ASSERT_EQ(i,2);
 }
 int main (int argc,char**argv){
     ::testing::InitGoogleTest(&argc,argv);

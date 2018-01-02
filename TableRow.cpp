@@ -34,4 +34,8 @@ TableRow & TableRow::operator<<(double d){
     values_.emplace_back(new RealValue(d));
     return *this;
 }
+TableRow & TableRow::operator<<(Value* v){
+    values_.emplace_back(v);
+    return *this;
+}
     

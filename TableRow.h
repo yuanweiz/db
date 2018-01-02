@@ -10,40 +10,51 @@ class Value;
 
 class TableRow{
     using ValueList = std::vector<std::unique_ptr<Value>>;
-public:
-    class iterator{
+    template <class stl_iter, class data_type>
+    class iterator_type{
     public:
-        iterator(const iterator&)=default;
-        iterator (const ValueList::iterator& iter)
+        iterator_type(const iterator_type&)=default;
+        iterator_type (const stl_iter& iter)
             :iter_(iter){}
-        Value& operator*()const{
+        data_type& operator*()const{
             return *(iter_->get());
         }
-        Value* operator ->() const {
+        data_type* operator ->() const {
             return iter_->get();
         }
-        iterator& operator++(){
+        iterator_type& operator++(){
             ++iter_;
             return *this;
         }
-        bool operator!=(const iterator& rhs){
+        bool operator!=(const iterator_type& rhs){
             return iter_!=rhs.iter_;
         }
-        bool operator==(const iterator& rhs){
+        bool operator==(const iterator_type& rhs){
             return iter_==rhs.iter_;
         }
-        iterator operator++(int){
-            return iterator(iter_++);
+        iterator_type operator++(int){
+            return iterator_type(iter_++);
         }
     private:
-        ValueList::iterator iter_;
+        stl_iter iter_;
     };
+public:
+    using const_iterator = iterator_type<ValueList::const_iterator,const Value>;
+    using iterator = iterator_type<ValueList::iterator,Value>;
     iterator begin(){
         return iterator(values_.begin());
     }
     iterator end(){
         return iterator(values_.end());
     }
+    const_iterator begin()const {
+        return const_iterator(values_.cbegin());
+    }
+    const_iterator end()const {
+        return const_iterator(values_.cend());
+    }
+    size_t size()const {return values_.size();}
+    TableRow & operator << (Value*);
     TableRow & operator << (const char*);
     TableRow & operator << (int64_t);
     TableRow & operator << (uint64_t);
