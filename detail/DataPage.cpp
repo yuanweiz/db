@@ -1,7 +1,4 @@
-<<<<<<< HEAD
 #include <algorithm>
-=======
->>>>>>> e9ebc9f8fb4aa8b97f429d20e29d5b2372fb6e87
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -222,7 +219,6 @@ namespace detail{
         auto* pCell = (Cell*)data_ + h.cells[sz];
         return StringView{pCell->data,pCell->size};
     }
-<<<<<<< HEAD
     void DataPageView::sanityCheck()
     {
         enum ErrorType{Overlap,Missing,OutOfRange};
@@ -273,7 +269,7 @@ namespace detail{
             max_ = std::max(max_,pr.second);
         }
         if (errors.empty())
-            return;
+            return; //no-throw
         LOG_DEBUG << errors.size() << " errors found";
         for (auto & error:errors){
             switch (error.type){
@@ -294,8 +290,6 @@ namespace detail{
         }
         throw Exception("sanityCheck failed");
     }
-=======
->>>>>>> e9ebc9f8fb4aa8b97f429d20e29d5b2372fb6e87
     void DataPageView::format()
     {
         //::bzero(&header(), sizeof(Header));

@@ -21,14 +21,7 @@ public:
     void* allocCell(size_t );
     void dropCell(size_t idx);
     uint16_t numOfCells()const;
-<<<<<<< HEAD
     void sanityCheck();
-=======
-    void sanityCheck(){
-        //checkFreeList();
-        //checkCells();
-    }
->>>>>>> e9ebc9f8fb4aa8b97f429d20e29d5b2372fb6e87
     void dump();
 private:
     void checkAccessViolation(uint16_t ptr){
@@ -43,28 +36,6 @@ private:
     }
     StringView getCell(size_t)const;
     struct FreeBlockIterator;
-<<<<<<< HEAD
-=======
-    //void checkFreeList(){
-    //    auto ptr = header().freeList;
-    //    while(ptr){
-    //        checkAccessViolation(ptr);
-    //        auto pFreeBlock = view_cast<FreeBlock*>(data_+ptr);
-    //        checkAccessViolation( ptr,pFreeBlock->size);
-    //        ptr = pFreeBlock->next;
-    //    }
-    //}
-    //void checkCells(){
-    //    for (uint16_t i =0;i<header().nCells;++i){
-    //        auto * cells = header().cells;
-    //        auto * pu16 = cells+i;
-    //        checkAccessViolation(pu16);
-    //        auto offset = *pu16;
-    //        auto pCell = view_cast<Cell*>(data_+offset);
-    //        checkAccessViolation(offset,pCell->size);
-    //    }
-    //}
->>>>>>> e9ebc9f8fb4aa8b97f429d20e29d5b2372fb6e87
     template <class T>
         T view_cast(void * ptr){
             return reinterpret_cast<T>(ptr);
@@ -73,12 +44,9 @@ private:
     Header& header(){
         return *reinterpret_cast<Header*>(data_);
     }
-<<<<<<< HEAD
     void* pointerAt(size_t sz){
         return data_+sz;
     }
-=======
->>>>>>> e9ebc9f8fb4aa8b97f429d20e29d5b2372fb6e87
     uint16_t offset_of(const void* ptr)const{
         return static_cast<uint16_t>(static_cast<const char*>(ptr) - data_);
     }

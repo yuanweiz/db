@@ -19,12 +19,9 @@ struct DataPageViewTest : ::testing::Test{
         view_.reset( new DataPageView(buffer_.get(), 4096));
         view_->format();
     }
-<<<<<<< HEAD
     void TearDown()override{
         view_->sanityCheck();
     }
-=======
->>>>>>> e9ebc9f8fb4aa8b97f429d20e29d5b2372fb6e87
     std::unique_ptr<char[]> buffer_;
     std::unique_ptr<DataPageView> view_;
 };
@@ -32,10 +29,6 @@ struct DataPageViewTest : ::testing::Test{
 TEST_F ( DataPageViewTest, Init){
     auto & view = *view_;
     ASSERT_EQ(view.numOfCells(), 0);
-<<<<<<< HEAD
-=======
-    view.sanityCheck();
->>>>>>> e9ebc9f8fb4aa8b97f429d20e29d5b2372fb6e87
 }
 TEST_F ( DataPageViewTest, Insert){
     auto & view = *view_;
@@ -46,10 +39,6 @@ TEST_F ( DataPageViewTest, Insert){
     view.dump();
     fillRandomData(ret,10);
     ASSERT_EQ(view.numOfCells(), 1);
-<<<<<<< HEAD
-=======
-    view.sanityCheck();
->>>>>>> e9ebc9f8fb4aa8b97f429d20e29d5b2372fb6e87
 }
 
 TEST_F ( DataPageViewTest, AllocateMultipleCells){
@@ -63,10 +52,6 @@ TEST_F ( DataPageViewTest, AllocateMultipleCells){
         fillRandomData(ret,10);
         ASSERT_EQ(view.numOfCells(), i+1);
     }
-<<<<<<< HEAD
-=======
-    view.sanityCheck();
->>>>>>> e9ebc9f8fb4aa8b97f429d20e29d5b2372fb6e87
 }
 TEST_F ( DataPageViewTest, AllocateAndDrop){
     auto & view = *view_;
@@ -87,10 +72,6 @@ TEST_F ( DataPageViewTest, AllocateAndDrop){
         view.dropCell(idx);
         view.dump();
     }
-<<<<<<< HEAD
-=======
-    view.sanityCheck();
->>>>>>> e9ebc9f8fb4aa8b97f429d20e29d5b2372fb6e87
 }
 
 int main (int argc, char** argv){
