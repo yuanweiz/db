@@ -52,6 +52,10 @@ public:
         lastAlloc_ =nGroups*kPagesPerGroup+2;
         return pager_.getPage(PageNo_t(lastAlloc_));
     }
+    PagePtr forceAllocPage(size_t ){
+        return PagePtr();
+    }
+
     void freePage(const PagePtr& pagePtr){
         if (state_==State::None){
             throw Exception("Hasn't yet been formatted");
@@ -91,6 +95,8 @@ private:
     void rewriteBitmap(uint32_t groupNo){
         getBitmap(groupNo,true);
     }
+    // rewrite = true is usually used when formatting
+    //
     PagePtr& getBitmap(uint32_t groupNo, bool rewrite){
         auto it = bitmapPages_.find(groupNo);
         if (it != bitmapPages_.end()){
@@ -133,6 +139,9 @@ PagePtr PageAllocator::allocate(){
     return pImpl_->allocPage();
 }
 
+PagePtr PageAllocator::forceAllocate(size_t pageNo){
+    return pImpl_->forceAllocPage(pageNo);
+}
 void PageAllocator::deallocate(PagePtr& ptr){
     return pImpl_->freePage(ptr);
 }

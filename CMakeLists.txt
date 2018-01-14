@@ -1,6 +1,21 @@
 cmake_minimum_required(VERSION 2.6)
-
-add_library (db Pager.cpp PagePtr.cpp PageAllocator.cpp Codec.cpp Exception.cpp TableDesc.cpp Value.cpp TableRow.cpp )
+set (SOURCE
+    ${SOURCE}
+    Pager.cpp 
+    PagePtr.cpp
+    PageAllocator.cpp
+    Codec.cpp
+    Exception.cpp 
+    Logging.cpp
+    Buffer.cpp
+    StringView.cpp
+    TableDesc.cpp 
+    Value.cpp 
+    TableRow.cpp 
+    ${CMAKE_CURRENT_SOURCE_DIR}/detail/DataPage.cpp
+    )
+    
+add_library (db ${SOURCE})
 
 include_directories(${PROJECT_SOURCE_DIR})
 set(CXX_FLAGS
