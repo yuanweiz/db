@@ -3,12 +3,20 @@
 #include <string>
 #include <memory>
 #include "PagePtr.h"
-class PageAllocator{
+class PageAllocatorBase{
+public:
+    virtual ~PageAllocatorBase(){}
+    virtual PagePtr allocate()=0;
+    virtual PagePtr forceAllocate(size_t)=0;
+    virtual void deallocate( PagePtr &)=0;
+};
+class PageAllocator :PageAllocatorBase{
 public:
     explicit PageAllocator(const std::string& fname);
-    ~PageAllocator();
-    PagePtr allocate();
-    void deallocate( PagePtr &);
+    ~PageAllocator() override;
+    PagePtr allocate()override;
+    void deallocate( PagePtr &)override;
+    PagePtr forceAllocate(size_t) override;
     void format();
     uint32_t maxGroup()const;
     bool formatted()const;
