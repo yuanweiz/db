@@ -15,6 +15,7 @@ void fillRandomData(void* dst_,size_t size){
 }
 struct DataPageViewTest : ::testing::Test{
     void SetUp() override{
+        srand(0);
         buffer_.reset(new char[4096]);
         view_.reset( new DataPageView(buffer_.get(), 4096));
         view_->format();
@@ -33,9 +34,10 @@ TEST_F ( DataPageViewTest, Init){
 TEST_F ( DataPageViewTest, Insert){
     auto & view = *view_;
     printf("before alloc\n");
-    view.dump();
+    //view.dump();
     auto ret = view.allocCell(10);
     printf("after alloc\n");
+    view.sanityCheck();
     view.dump();
     fillRandomData(ret,10);
     ASSERT_EQ(view.numOfCells(), 1);
@@ -60,7 +62,7 @@ TEST_F ( DataPageViewTest, AllocateAndDrop){
     for (int i=0;i<5;++i){
         auto ret = view.allocCell(10);
         printf("after alloc i=%i\n",i);
-        view.dump();
+        //view.dump();
         fillRandomData(ret,10);
         ASSERT_EQ(view.numOfCells(), i+1);
     }
@@ -71,6 +73,35 @@ TEST_F ( DataPageViewTest, AllocateAndDrop){
         LOG_DEBUG << "drop cell " << idx;
         view.dropCell(idx);
         view.dump();
+        view.sanityCheck();
+        //view.dump();
+    }
+}
+
+TEST_F(DataPageViewTest, RandomSizeAllocationAndDrop){
+    const int MAX_SIZE=50;
+    auto & view = *view_;
+    const int MaxCellCount = 100;
+    Logger::setLevel(Logger::LogFatal);
+    for (int i=0;i<MaxCellCount;++i){
+        view.allocCell(rand()%MAX_SIZE);
+    }
+    for (int i=0;i<MaxCellCount/2;++i){
+        auto nCells = view.numOfCells();
+        view.dropCell(rand()%nCells);
+        view.sanityCheck();
+    }
+    Logger::setLevel(Logger::LogDebug);
+    for (int i=0;i<MaxCellCount/2;++i){
+        auto size=rand()%MAX_SIZE;
+        //LOG_DEBUG << "allocating size=" <<size;
+        view.allocCell(size);
+        view.sanityCheck();
+    }
+    int nCells;
+    while((nCells=view.numOfCells())!=0){
+        view.dropCell(rand()%nCells);
+        view.sanityCheck();
     }
 }
 

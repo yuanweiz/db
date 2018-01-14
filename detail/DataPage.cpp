@@ -85,9 +85,10 @@ namespace detail{
             uint16_t offset = offset_of(ptr);
             auto * freeBlock = (FreeBlock*)ptr;
             assert(offset > bound);
-            printf("freeblock = {header:[%d,%lu),data:[%d,%d)}\n", 
+            printf("freeblock = {header:[%d,%lu),data:[%d,%d),next=%d}\n", 
                     offset, offset+sizeof(FreeBlock),
-                    offset_of(freeBlock->data), offset_of(freeBlock->data)+(freeBlock->size)
+                    offset_of(freeBlock->data), offset_of(freeBlock->data)+(freeBlock->size),
+                    freeBlock->next
                     );
             ptr = (uint16_t*)(data_+*ptr);
             bound = offset + freeBlock->size;
@@ -108,11 +109,22 @@ namespace detail{
         }
     }
     void* DataPageView::allocCell(size_t sz){
+        LOG_TRACE << "allocCell(" << sz <<")";
         auto & h = header();
         bool isTop = false;
         uint16_t * curr = (uint16_t*)(data_+h.freeList);
         uint16_t* prev = & h.freeList;
         uint16_t* top = h.cells + h.nCells;
+        assert((void*)top==data_+h.freeList);
+        {
+        auto *firstFreeBlock = (FreeBlock*) top;
+        LOG_DEBUG << "firstFreeBlock->size=" << firstFreeBlock->size;
+        if (firstFreeBlock->size < 4){
+            LOG_DEBUG << "cell list stack may overflow, cannot allocate a cell";
+            return nullptr;
+        }
+        }
+
         auto advance = [this](uint16_t *&ptr){
             ptr = (uint16_t*)(data_ + *ptr);
         };
@@ -120,7 +132,8 @@ namespace detail{
             auto * pFreeBlock = view_cast<FreeBlock*>(curr);
             if (pFreeBlock->size <= sz)continue;
             if (curr == top){
-                if ( pFreeBlock-> size <= sz + 2){
+                // 2 for stack growth, 4 for splitting
+                if ( pFreeBlock-> size <= sz + 2 + 4){
                     continue;
                 }
                 else {
@@ -130,22 +143,34 @@ namespace detail{
             break;
         }
         if (curr==(uint16_t*)data_ )return nullptr;
+        //no matter which block it is from
+        //always decrease by 2
+
+        ::memmove(top+1,top,4); 
+        top++;
+        h.freeList+=2;
+        auto *firstFreeBlock = (FreeBlock*)top ;
+        firstFreeBlock->size-=2;
         if (isTop){
-            ::memmove(curr+1,curr,4); 
             curr++;
-            *prev +=2;
-            auto *pFreeBlock = (FreeBlock*)curr;
-            pFreeBlock->size-=2;
+            assert(top==curr);
+            assert(prev == &h.freeList);
             //fall through
+        }
+        if (prev == top-1){
+            prev = top; // prev is the first freeblock
+            assert(firstFreeBlock == (void*)prev);
         }
         auto *pFreeBlock = (FreeBlock*)curr;
         auto cellSz = pFreeBlock->size;
-        int fragment=0;
+        //int fragment=0;
+        bool fragment = false;
+        auto * newCellPtr = top-1;
         if (cellSz < sz+4){
+            fragment = true;
             //assign it
-            fragment = sz+4-cellSz;
             *prev = *curr;
-            *top = (char*)curr - data_;
+            *newCellPtr = (char*)curr - data_;
             h.nCells++;
         }
         else {
@@ -153,12 +178,13 @@ namespace detail{
             // first part is not moved ,just return the second part
             uint16_t newSize =  pFreeBlock->size - sz - 4;
             pFreeBlock->size = newSize;
-            *top = pFreeBlock->data + newSize - data_;
+            *newCellPtr = pFreeBlock->data + newSize - data_;
             h.nCells++;
         }
-        auto *pCell = (Cell*)(data_+*top);
+        auto *pCell = (Cell*)(data_+*newCellPtr);
         pCell->size = sz;
-        pCell->capacity = sz+fragment;
+        //pCell->capacity = sz+fragment;
+        pCell->capacity = fragment? cellSz: sz;
         return pCell->data;
     }
     void DataPageView::dropCell(size_t idx){
@@ -183,7 +209,7 @@ namespace detail{
         {
         auto * pCell = view_cast<Cell*>(data_+cellPtr);
         auto * pFreeBlock = view_cast<FreeBlock*>(data_+cellPtr);
-        pFreeBlock->size = pCell->size; //can be removed?
+        pFreeBlock->size = pCell->capacity; //can be removed?
         }
         auto * newFreeBlock = (FreeBlock*) (data_+cellPtr);
         uint16_t* prev = &h.freeList;
@@ -222,6 +248,7 @@ namespace detail{
     void DataPageView::sanityCheck()
     {
         enum ErrorType{Overlap,Missing,OutOfRange};
+        enum RangeType{Free,Alloced,Header};
         struct Error{
             ErrorType type;
             int start;
@@ -232,41 +259,93 @@ namespace detail{
             {
             }
         };
-        std::vector<std::pair<int,int>> ranges;
+        struct Range{
+            RangeType type;
+            int start;
+            int end;
+            Range(){}
+            Range(RangeType t,int s,int e)
+                :type(t),start(s),end(e)
+            {
+            }
+        };
+        auto cmp = [](const Range&a,const Range&b){
+            if (a.start<b.start)return true;
+            if (a.start>b.start)return false;
+            return a.end < b.end;
+        };
+        //std::vector<std::pair<int,int>> ranges;
+        std::vector<Range> ranges;
         std::vector<Error> errors;
         auto & h = header();
         int headerSize = offset_of(h.cells) + sizeof(uint16_t)*h.nCells;
-        ranges.push_back({0,headerSize});
+        ranges.push_back({RangeType::Header,0,headerSize});
         uint16_t* ptr = (uint16_t*)(data_+h.freeList);
         while((void*)ptr!=data_){
             auto * pFreeBlock = (FreeBlock*) ptr;
             //TODO: violation error checks
             auto start = offset_of(pFreeBlock);
-            auto end = start+ pFreeBlock->size + sizeof(FreeBlock);
-            ranges.push_back({start,end});
+            if (start>=pageSz_){
+                LOG_DEBUG << "list{start=" << start <<", next=" 
+                    << pFreeBlock->next << "}is out of range,"
+                    "cannot further traverse through freelist";
+                break;
+            }
+            int end = start+ pFreeBlock->size + sizeof(FreeBlock);
+            if ((size_t)end>pageSz_){
+                LOG_DEBUG << "list {start="<<start<<
+                    ", end=" << end 
+                    << ",next=" << pFreeBlock->next <<"}is out of range,"
+                    "cannot further traverse through freelist";
+                break;
+            }
+            assert(end-start>=4);
+            ranges.push_back({RangeType::Free,start,end});
             ptr = (uint16_t*)(data_ + *ptr);
         }
         auto nCells = h.nCells;
         for (size_t i=0;i<nCells;++i){
             auto * pCell = (Cell*)(data_ + h.cells[i]);
             auto start = offset_of(pCell);
-            auto end = start + pCell->capacity + sizeof(Cell);
-            ranges.push_back({start,end});
+            if (start>=pageSz_){
+                LOG_DEBUG << "cell["<<i<<"].start=" << start <<
+                    "is out of range, skipping";
+                continue;
+            }
+            int end = start + pCell->capacity + sizeof(Cell);
+            if ((size_t)end>pageSz_){
+                LOG_DEBUG << "cell["<<i<<"].start=" << start <<
+                    "is out of range, skipping";
+                continue;
+            }
+            ranges.push_back({RangeType::Alloced,start,end});
         }
         int max_ = 0;
-        std::sort(ranges.begin(),ranges.end());
+        std::sort(ranges.begin(),ranges.end(),cmp);
         for (auto range : ranges){
-            LOG_DEBUG << "range: ("<<range.first <<","<< range.second<<")";
+            switch(range.type){
+                case RangeType::Header:
+                    LOG_DEBUG << "Header: ("<<range.start <<","<< range.end<<")";
+                    break;
+                case RangeType::Alloced:
+                    LOG_DEBUG << "Alloced: ("<<range.start <<","<< range.end<<")";
+                    break;
+                case RangeType::Free:
+                    FreeBlock* block=(FreeBlock*)(data_+range.start);
+                    LOG_DEBUG << "FreeBlock: next=" <<block->next << ",("
+                        <<range.start <<","<< range.end<<")";
+                    break;
+            }
         }
-        for (auto pr: ranges){
-            if (pr.first > max_){
+        for (auto range: ranges){
+            if (range.start > max_){
                 //a "hole" in the address space
-                errors.push_back({Missing,max_, pr.first});
+                errors.push_back({Missing,max_, range.start});
             }
-            else if (pr.first < max_ ){
-                errors.push_back({Overlap, pr.first,max_});
+            else if (range.start < max_ ){
+                errors.push_back({Overlap, range.start,max_});
             }
-            max_ = std::max(max_,pr.second);
+            max_ = std::max(max_,range.end);
         }
         if (errors.empty())
             return; //no-throw
