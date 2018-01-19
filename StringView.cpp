@@ -9,3 +9,12 @@ StringView::StringView(const char* data, size_t sz)
 {
 }
 
+StringView::StringView(const std::string& str)
+    :StringView(str.data(),str.size())
+{
+
+}
+
+StringView::operator std::string(){
+    return std::string(data_,sz_);
+}
