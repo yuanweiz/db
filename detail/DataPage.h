@@ -18,11 +18,14 @@ public:
     }
     void format();
 
-    void* allocCell(size_t );
+    void* allocCell(size_t ); //for unsorted file maybe?
+    void* allocCellAt(size_t idx, size_t sz);
     void dropCell(size_t idx);
     uint16_t numOfCells()const;
     void sanityCheck();
     void dump();
+    StringView getCell(size_t)const;
+    uint32_t next();
 private:
     void checkAccessViolation(uint16_t ptr){
         assert(ptr < pageSz_);(void)ptr;
@@ -34,7 +37,6 @@ private:
         assert(ptr < pageSz_);(void)ptr;
         assert(ptr + sz <= pageSz_); (void)sz;
     }
-    StringView getCell(size_t)const;
     struct FreeBlockIterator;
     template <class T>
         T view_cast(void * ptr){

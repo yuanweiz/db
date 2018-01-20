@@ -52,7 +52,7 @@ public:
         lastAlloc_ =nGroups*kPagesPerGroup+2;
         return pager_.getPage(PageNo_t(lastAlloc_));
     }
-    PagePtr forceAllocPage(size_t ){
+    PagePtr forceAllocPage(PageNo_t ){
         return PagePtr();
     }
 
@@ -139,7 +139,7 @@ PagePtr PageAllocator::allocate(){
     return pImpl_->allocPage();
 }
 
-PagePtr PageAllocator::forceAllocate(size_t pageNo){
+PagePtr PageAllocator::forceAllocate(PageNo_t pageNo){
     return pImpl_->forceAllocPage(pageNo);
 }
 void PageAllocator::deallocate(PagePtr& ptr){
@@ -150,5 +150,8 @@ uint32_t PageAllocator::maxGroup()const{
     return pImpl_->maxGroup();
 }
 
+PagePtr PageAllocator::getPage(PageNo_t){
+    return PagePtr();
+}
 PageAllocator::~PageAllocator(){
 }

@@ -12,5 +12,12 @@ inline std::string randomData(size_t sz){
     }
     return s;
 }
+inline void fillRandomData(void* dst_,size_t size){
+    char * dst = static_cast<char*>(dst_);
+    for (size_t i=0;i<size;++i){
+        char c = static_cast<char>(rand());
+        dst[i]=c;
+    }
+}
 }
 #endif// __HELPER_H

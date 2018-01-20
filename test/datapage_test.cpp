@@ -4,15 +4,9 @@
 #include <gtest/gtest.h>
 #include <Logging.h>
 #include <memory>
+#include "helper.h"
 using detail::DataPageView;
 
-void fillRandomData(void* dst_,size_t size){
-    char * dst = static_cast<char*>(dst_);
-    for (size_t i=0;i<size;++i){
-        char c = static_cast<char>(rand());
-        dst[i]=c;
-    }
-}
 struct DataPageViewTest : ::testing::Test{
     void SetUp() override{
         srand(0);
@@ -39,7 +33,7 @@ TEST_F ( DataPageViewTest, Insert){
     printf("after alloc\n");
     view.sanityCheck();
     view.dump();
-    fillRandomData(ret,10);
+    Helper::fillRandomData(ret,10);
     ASSERT_EQ(view.numOfCells(), 1);
 }
 
@@ -51,7 +45,7 @@ TEST_F ( DataPageViewTest, AllocateMultipleCells){
         auto ret = view.allocCell(10);
         printf("after alloc i=%i\n",i);
         view.dump();
-        fillRandomData(ret,10);
+        Helper::fillRandomData(ret,10);
         ASSERT_EQ(view.numOfCells(), i+1);
     }
 }
@@ -63,7 +57,7 @@ TEST_F ( DataPageViewTest, AllocateAndDrop){
         auto ret = view.allocCell(10);
         printf("after alloc i=%i\n",i);
         //view.dump();
-        fillRandomData(ret,10);
+        Helper::fillRandomData(ret,10);
         ASSERT_EQ(view.numOfCells(), i+1);
     }
     while(true){
@@ -102,6 +96,32 @@ TEST_F(DataPageViewTest, RandomSizeAllocationAndDrop){
     while((nCells=view.numOfCells())!=0){
         view.dropCell(rand()%nCells);
         view.sanityCheck();
+    }
+}
+
+TEST_F(DataPageViewTest, InsertAt){
+    auto & view = * view_;
+    void * p = view.allocCellAt(0,100);
+    auto strView = view.getCell(0);
+    ASSERT_EQ(p,strView.data());
+}
+
+TEST_F(DataPageViewTest, InsertAt2){
+    auto & view = * view_;
+    void *p1=view.allocCellAt(0,101);
+    void *p2=view.allocCellAt(0,102);
+    void *p3=view.allocCellAt(1,103);
+    {
+        auto strView = view.getCell(0);
+        ASSERT_EQ(p2,strView.data());
+    }
+    {
+        auto strView = view.getCell(1);
+        ASSERT_EQ(p3,strView.data());
+    }
+    {
+        auto strView = view.getCell(2);
+        ASSERT_EQ(p1,strView.data());
     }
 }
 

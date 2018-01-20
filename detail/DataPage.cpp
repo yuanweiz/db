@@ -187,6 +187,19 @@ namespace detail{
         pCell->capacity = fragment? cellSz: sz;
         return pCell->data;
     }
+    void* DataPageView::allocCellAt(size_t idx,size_t sz){
+        auto & h = header();
+        auto nCells = h.nCells;
+        if (nCells < idx){
+            throw Exception("wrong index");
+        }
+        void * ret= allocCell(sz);
+        if (ret){
+            assert(nCells + 1 == h.nCells);
+            std::rotate(h.cells+idx,h.cells+nCells, h.cells+h.nCells);
+        }
+        return ret;
+    }
     void DataPageView::dropCell(size_t idx){
         auto & h = header();
         if (idx>=h.nCells){
@@ -242,7 +255,7 @@ namespace detail{
         if (sz >= h.nCells){
             throw Exception("index out of range");
         }
-        auto* pCell = (Cell*)data_ + h.cells[sz];
+        auto* pCell = (Cell*)(data_ + h.cells[sz]);
         return StringView{pCell->data,pCell->size};
     }
     void DataPageView::sanityCheck()
@@ -378,5 +391,8 @@ namespace detail{
         auto * pFreeBlock = view_cast<FreeBlock*>(data_+header().freeList);
         pFreeBlock->next = 0;
         pFreeBlock->size = pageSz_ - sizeof(Header)- sizeof(FreeBlock);
+    }
+    uint32_t DataPageView::next(){
+        return header().next;
     }
 }

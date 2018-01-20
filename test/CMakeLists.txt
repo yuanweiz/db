@@ -1,4 +1,16 @@
-foreach( filename  pageptr_test pager_test bitvector_test page_allocator_test table_desc_test value_test tablerow_test codec_test datapage_test signal_slot_test)
+foreach( filename  
+        pageptr_test 
+        pager_test 
+        bitvector_test 
+        page_allocator_test 
+        table_desc_test 
+        value_test 
+        tablerow_test 
+        codec_test 
+        datapage_test 
+        signal_slot_test 
+        filesystem_test
+        )
     add_executable( ${filename} ${filename}.cpp)
     target_link_libraries( ${filename}  db ${GTEST_LIBRARIES} )
     add_test ( ${filename} ${filename})

@@ -7,8 +7,9 @@ class PageAllocatorBase{
 public:
     virtual ~PageAllocatorBase(){}
     virtual PagePtr allocate()=0;
-    virtual PagePtr forceAllocate(size_t)=0;
+    virtual PagePtr forceAllocate(PageNo_t)=0;
     virtual void deallocate( PagePtr &)=0;
+    virtual PagePtr getPage(PageNo_t)=0;
 };
 class PageAllocator :PageAllocatorBase{
 public:
@@ -16,10 +17,11 @@ public:
     ~PageAllocator() override;
     PagePtr allocate()override;
     void deallocate( PagePtr &)override;
-    PagePtr forceAllocate(size_t) override;
+    PagePtr forceAllocate(PageNo_t) override;
     void format();
     uint32_t maxGroup()const;
     bool formatted()const;
+    PagePtr getPage(PageNo_t)override;
 private:
     class Impl;
     std::unique_ptr<Impl> pImpl_;

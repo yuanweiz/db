@@ -37,19 +37,41 @@ public:
     };
 };
 
+class ClassTypeSignalSlotTest : ::testing::Test{
+public:
+    struct Foo{
+        Foo()=default;
+        Foo(const Foo&){
+        }
+        static bool copied;
+    };
+    class Sender{
+        public:
+            Sender(){}
+            Signal<Foo> signal;
+            void changeVal(const Foo& v){
+                signal.emit(v); //emit by value
+            }
+    };
 
+    class Receiver{
+        public:
+            Receiver()
+                :slot(Receiver::onValueChange)
+            {}
+            ~Receiver(){
 
-struct Foo{
+            }
+            Slot<const Foo&> slot; //capture by ref
+        private:
+            static void onValueChange(const Foo&){
+                printf("Foo\n");
+            }
+    };
 };
+bool ClassTypeSignalSlotTest::Foo::copied = false;
 
-struct Bar{
-    Bar(const Foo&){
-        puts("copy ctor");
-    }
-    Bar(Foo&&){
-        puts("move ctor");
-    }
-};
+
 TEST( SimplePODSignalSlotTest, LifeTime){
     using Sender = SimplePODSignalSlotTest::Sender;
     using Receiver = SimplePODSignalSlotTest::Receiver;
@@ -75,6 +97,16 @@ TEST( SimplePODSignalSlotTest, LifeTime){
             receiver.valueChange.connect(sender.valueChange);
         }
         assert(receiver.valueChange.numOfSenders() == 0);
+    }
+}
+
+void foo (int );
+TEST(ClassTypeSignalSlotTest, CallByValue){
+    using Sender = ClassTypeSignalSlotTest::Sender;
+    using Receiver = ClassTypeSignalSlotTest::Receiver;
+    {
+        Receiver receiver;
+        Sender sender;
     }
 }
 int main (int argc, char ** argv){
