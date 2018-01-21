@@ -9,7 +9,9 @@ public:
     virtual PagePtr allocate()=0;
     virtual PagePtr forceAllocate(PageNo_t)=0;
     virtual void deallocate( PagePtr &)=0;
-    virtual PagePtr getPage(PageNo_t)=0;
+    PagePtr getPage(PageNo_t); //guard, for PageNo_t=0 should return nullptr
+protected:
+    virtual PagePtr getPageImpl(PageNo_t)=0;
 };
 class PageAllocator :PageAllocatorBase{
 public:
@@ -21,7 +23,7 @@ public:
     void format();
     uint32_t maxGroup()const;
     bool formatted()const;
-    PagePtr getPage(PageNo_t)override;
+    PagePtr getPageImpl(PageNo_t)override;
 private:
     class Impl;
     std::unique_ptr<Impl> pImpl_;

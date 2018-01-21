@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.6)
 set (SOURCE
     ${SOURCE}
     Pager.cpp 
+    BTree.cpp
     PagePtr.cpp
     PageAllocator.cpp
     Codec.cpp

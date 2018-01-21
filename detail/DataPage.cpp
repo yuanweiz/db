@@ -9,30 +9,52 @@
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 namespace detail{
-    struct DataPageHeader{
-        uint16_t type;
+    class NonConstructable{
+        NonConstructable()=delete;
+    };
+    struct RootPageHeader : NonConstructable{
+        static constexpr auto TYPE=RootPageView::TYPE;
+        uint8_t type;
+        uint8_t hasChildren;
+        uint16_t freeList;
+        uint16_t nFragment; // number of free bytes
+        uint16_t nCells;
+        uint16_t cells[0];
+    };
+
+    struct InternalPageHeader : NonConstructable{
+        static constexpr auto TYPE=InternalPageView::TYPE;
+        uint8_t type;
+        uint8_t hasChildren;
         uint16_t freeList;
         uint32_t next;
         uint32_t prev;
         uint16_t nFragment; // number of free bytes
         uint16_t nCells;
         uint16_t cells[0];
-    private:
-        DataPageHeader(){} //non constructable
     };
-    struct FreeBlock{
+
+    struct DataPageHeader :NonConstructable{
+        static constexpr auto TYPE=DataPageView::TYPE;
+        uint8_t type;
+        uint8_t hasChildren;
+        uint16_t freeList;
+        uint32_t next;
+        uint32_t prev;
+        uint16_t nFragment; // number of free bytes
+        uint16_t nCells;
+        uint16_t cells[0];
+    };
+
+    struct FreeBlock :NonConstructable{
         uint16_t next; 
         uint16_t size; // non-inclusive
         char data[0];
-    private:
-        FreeBlock(){}
     };
-    struct Cell{
+    struct Cell : NonConstructable{
         uint16_t capacity;
         uint16_t size;
         char data[0];
-    private:
-        Cell(){}
     };
     static_assert( sizeof (DataPageHeader) == 16, "wrong memory layout");
     static_assert( sizeof (FreeBlock) == 4, "wrong memory layout");
@@ -363,17 +385,31 @@ namespace detail{
     {
         //::bzero(&header(), sizeof(Header));
         ::bzero(data_,pageSz_);
-        header().type = 1;
+        header().type = Header::TYPE;
         header().freeList = sizeof(Header);
         auto * pFreeBlock = view_cast<FreeBlock*>(data_+header().freeList);
         pFreeBlock->next = 0;
         pFreeBlock->size = pageSz_ - sizeof(Header)- sizeof(FreeBlock);
     }
     template <typename Header, typename Parent>
-    uint32_t PageView<Header,Parent>::next(){
+    bool PageView<Header,Parent>::hasChildren()const{
+        return header().hasChildren;
+    }
+
+
+    uint32_t DataPageView::prev()const{
+        return header().prev;
+    }
+    uint32_t DataPageView::next()const{
         return header().next;
     }
 
+    void RootPageView::setHasChildren(bool hasChildren){
+        header().hasChildren = hasChildren;
+    }
+
     //explicit instantiate
+    template class PageView<RootPageHeader,void>;
+    template class PageView<InternalPageHeader,RootPageView>;
     template class PageView<DataPageHeader,InternalPageView>;
 }

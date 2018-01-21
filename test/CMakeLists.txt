@@ -10,6 +10,7 @@ foreach( filename
         datapage_test 
         signal_slot_test 
         filesystem_test
+        btree_test
         )
     add_executable( ${filename} ${filename}.cpp)
     target_link_libraries( ${filename}  db ${GTEST_LIBRARIES} )

@@ -21,6 +21,7 @@ public:
 
     void* allocCell(size_t ); //for unsorted file maybe?
     void* allocCellAt(size_t idx, size_t sz);
+    bool hasChildren()const; // for root page it can be true/false, otherwise false
     void dropCell(size_t idx);
     uint16_t numOfCells()const;
     void sanityCheck();
@@ -52,16 +53,27 @@ protected:
 class RootPageView: 
     public PageView<RootPageHeader,void>
 {
+    public:
+    static constexpr uint8_t TYPE=1;
+    void setHasChildren(bool);
+    using Base = PageView<RootPageHeader,void>;
+    using Base::Base;
 };
 class InternalPageView: 
     public PageView<InternalPageView,RootPageView>
 {
+    public:
+    static constexpr uint8_t TYPE=2;
 };
 class DataPageView : 
     public PageView<DataPageHeader,InternalPageView>
 {
+public:
+    static constexpr uint8_t TYPE=3;
     using Base =PageView<DataPageHeader,InternalPageView>;
     using Base::Base;
+    uint32_t prev()const;
+    uint32_t next()const;
 };
 
 }
