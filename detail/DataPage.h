@@ -5,13 +5,14 @@
 #include <PagePtr.h>
 #include <StringView.h>
 namespace detail{
-struct Header;
-class DataPageView{
+struct DataPageHeader;
+struct RootPageHeader;
+struct InternalPageHeader;
+
+template <typename Header,typename Parent>
+class PageView{
 public:
-    //explicit DataPageView( PagePtr& pagePtr)
-    //    :data_(pagePtr->getNonConst()),
-    //    pageSz_(pagePtr->pageSize())
-    explicit DataPageView(  void* data,size_t pageSz)
+    explicit PageView(  void* data,size_t pageSz)
         :data_(static_cast<char*>(data)),
         pageSz_(pageSz)
     {
@@ -26,17 +27,7 @@ public:
     void dump();
     StringView getCell(size_t)const;
     uint32_t next();
-private:
-    void checkAccessViolation(uint16_t ptr){
-        assert(ptr < pageSz_);(void)ptr;
-    }
-    void checkAccessViolation(void* ptr){
-        assert(ptr < data_ + pageSz_);(void)ptr;
-    }
-    void checkAccessViolation(uint16_t ptr,uint16_t sz){
-        assert(ptr < pageSz_);(void)ptr;
-        assert(ptr + sz <= pageSz_); (void)sz;
-    }
+protected:
     struct FreeBlockIterator;
     template <class T>
         T view_cast(void * ptr){
@@ -58,5 +49,20 @@ private:
     char * data_;
     const size_t pageSz_;
 };
+class RootPageView: 
+    public PageView<RootPageHeader,void>
+{
+};
+class InternalPageView: 
+    public PageView<InternalPageView,RootPageView>
+{
+};
+class DataPageView : 
+    public PageView<DataPageHeader,InternalPageView>
+{
+    using Base =PageView<DataPageHeader,InternalPageView>;
+    using Base::Base;
+};
+
 }
 #endif// __DATAPAGE_H

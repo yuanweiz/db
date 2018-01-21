@@ -9,15 +9,16 @@
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 namespace detail{
-    struct Header{
+    struct DataPageHeader{
         uint16_t type;
         uint16_t freeList;
         uint32_t next;
+        uint32_t prev;
         uint16_t nFragment; // number of free bytes
         uint16_t nCells;
         uint16_t cells[0];
     private:
-        Header(){} //non constructable
+        DataPageHeader(){} //non constructable
     };
     struct FreeBlock{
         uint16_t next; 
@@ -33,47 +34,17 @@ namespace detail{
     private:
         Cell(){}
     };
-    static_assert( sizeof (Header) == 12, "wrong memory layout");
+    static_assert( sizeof (DataPageHeader) == 16, "wrong memory layout");
     static_assert( sizeof (FreeBlock) == 4, "wrong memory layout");
     static_assert( sizeof (Cell) == 4, "wrong memory layout");
 
-    uint16_t DataPageView::numOfCells()const{
+    template<typename Header,typename Parent>
+    uint16_t PageView<Header,Parent>::numOfCells()const{
         return header().nCells;
     }
-    struct DataPageView::FreeBlockIterator{
-        using Self = FreeBlockIterator;
-        explicit FreeBlockIterator(DataPageView * view)
-            :view_(*view)
-        {
-            ptr_ = view_.header().freeList;
-        }
-        FreeBlockIterator(const Self&rhs)=default;
-        FreeBlockIterator(DataPageView * view, int)
-            :view_(*view)
-        {
-            ptr_ = 0;
-        }
-        FreeBlock& operator*()const {
-            return *view_.view_cast<FreeBlock*>
-                (view_.data_+ptr_);
-        }
-        Self & operator++(){
-            auto * data = view_.data_;
-            auto * pFreeBlock = view_.view_cast
-                <FreeBlock*>(data+ptr_);
-            ptr_ = pFreeBlock->next;
-            return *this;
-        }
-        bool operator==(const Self& rhs){
-            return &view_ == &rhs.view_ && ptr_ == rhs.ptr_;
-        }
-        bool operator!=(const Self&rhs){
-            return !(*this == rhs);
-        }
-        DataPageView& view_;
-        uint16_t ptr_;
-    };
-    void DataPageView::dump(){
+
+    template <typename Header, typename Parent>
+    void PageView<Header,Parent>::dump(){
         uint16_t* ptr = (uint16_t*)(data_+ header().freeList);
         uint16_t bound = 0;
         while(ptr!=(uint16_t*)data_){
@@ -108,7 +79,8 @@ namespace detail{
             //auto * pCell = view_cast<Cell*>(data_+offset);
         }
     }
-    void* DataPageView::allocCell(size_t sz){
+    template <typename Header, typename Parent>
+    void* PageView<Header,Parent>::allocCell(size_t sz){
         LOG_TRACE << "allocCell(" << sz <<")";
         auto & h = header();
         bool isTop = false;
@@ -187,7 +159,8 @@ namespace detail{
         pCell->capacity = fragment? cellSz: sz;
         return pCell->data;
     }
-    void* DataPageView::allocCellAt(size_t idx,size_t sz){
+    template <typename Header, typename Parent>
+    void* PageView<Header,Parent>::allocCellAt(size_t idx,size_t sz){
         auto & h = header();
         auto nCells = h.nCells;
         if (nCells < idx){
@@ -200,7 +173,8 @@ namespace detail{
         }
         return ret;
     }
-    void DataPageView::dropCell(size_t idx){
+    template <typename Header, typename Parent>
+    void PageView<Header,Parent>::dropCell(size_t idx){
         auto & h = header();
         if (idx>=h.nCells){
             throw Exception("out of range");
@@ -250,7 +224,8 @@ namespace detail{
             prevFreeBlock->size += (4+newFreeBlock->size);
         }
     }
-    StringView DataPageView::getCell(size_t sz)const {
+    template <typename Header, typename Parent>
+    StringView PageView<Header,Parent>::getCell(size_t sz)const {
         auto & h = header();
         if (sz >= h.nCells){
             throw Exception("index out of range");
@@ -258,10 +233,11 @@ namespace detail{
         auto* pCell = (Cell*)(data_ + h.cells[sz]);
         return StringView{pCell->data,pCell->size};
     }
-    void DataPageView::sanityCheck()
+    template <typename Header, typename Parent>
+    void PageView<Header,Parent>::sanityCheck()
     {
         enum ErrorType{Overlap,Missing,OutOfRange};
-        enum RangeType{Free,Alloced,Header};
+        enum RangeType{Free,Alloced,HeaderTrunk};
         struct Error{
             ErrorType type;
             int start;
@@ -292,7 +268,7 @@ namespace detail{
         std::vector<Error> errors;
         auto & h = header();
         int headerSize = offset_of(h.cells) + sizeof(uint16_t)*h.nCells;
-        ranges.push_back({RangeType::Header,0,headerSize});
+        ranges.push_back({RangeType::HeaderTrunk,0,headerSize});
         uint16_t* ptr = (uint16_t*)(data_+h.freeList);
         while((void*)ptr!=data_){
             auto * pFreeBlock = (FreeBlock*) ptr;
@@ -337,7 +313,7 @@ namespace detail{
         std::sort(ranges.begin(),ranges.end(),cmp);
         for (auto range : ranges){
             switch(range.type){
-                case RangeType::Header:
+                case RangeType::HeaderTrunk:
                     LOG_DEBUG << "Header: ("<<range.start <<","<< range.end<<")";
                     break;
                 case RangeType::Alloced:
@@ -382,7 +358,8 @@ namespace detail{
         }
         throw Exception("sanityCheck failed");
     }
-    void DataPageView::format()
+    template <typename Header, typename Parent>
+    void PageView<Header,Parent>::format()
     {
         //::bzero(&header(), sizeof(Header));
         ::bzero(data_,pageSz_);
@@ -392,7 +369,11 @@ namespace detail{
         pFreeBlock->next = 0;
         pFreeBlock->size = pageSz_ - sizeof(Header)- sizeof(FreeBlock);
     }
-    uint32_t DataPageView::next(){
+    template <typename Header, typename Parent>
+    uint32_t PageView<Header,Parent>::next(){
         return header().next;
     }
+
+    //explicit instantiate
+    template class PageView<DataPageHeader,InternalPageView>;
 }
