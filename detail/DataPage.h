@@ -9,7 +9,7 @@ struct DataPageHeader;
 struct RootPageHeader;
 struct InternalPageHeader;
 
-template <typename Header,typename Parent>
+template <typename Header>
 class PageView{
 public:
     explicit PageView(  void* data,size_t pageSz)
@@ -52,29 +52,35 @@ protected:
     const size_t pageSz_;
 };
 class RootPageView: 
-    public PageView<RootPageHeader,void>
+    public PageView<RootPageHeader>
 {
     public:
     static constexpr uint8_t TYPE=1;
     void setHasChildren(bool);
-    using Base = PageView<RootPageHeader,void>;
+    using Base = PageView<RootPageHeader>;
     using Base::Base;
 };
 class InternalPageView: 
-    public PageView<InternalPageView,RootPageView>
+    public PageView<InternalPageHeader>
 {
     public:
     static constexpr uint8_t TYPE=2;
-    uint32_t parent();
+    using Base= PageView<InternalPageHeader>;
+    using Base::Base;
+    uint32_t prev()const;
+    uint32_t next()const;
+    void setNext(uint32_t);
+    void setPrev(uint32_t);
+    uint32_t parent() const;
+    void setParent(uint32_t);
 };
 class DataPageView : 
-    public PageView<DataPageHeader,InternalPageView>
+    public PageView<DataPageHeader>
 {
 public:
     static constexpr uint8_t TYPE=3;
-    using Base =PageView<DataPageHeader,InternalPageView>;
+    using Base =PageView<DataPageHeader>;
     using Base::Base;
-    uint32_t parent();
     uint32_t prev()const;
     uint32_t next()const;
     void setNext(uint32_t);

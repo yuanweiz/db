@@ -62,17 +62,17 @@ namespace detail{
     static_assert( sizeof (FreeBlock) == 4, "wrong memory layout");
     static_assert( sizeof (Cell) == 4, "wrong memory layout");
 
-    template<typename Header,typename Parent>
-    uint16_t PageView<Header,Parent>::numOfCells()const{
+    template<typename Header>
+    uint16_t PageView<Header>::numOfCells()const{
         return header().nCells;
     }
 
-    template <typename Header, typename Parent>
-    uint8_t PageView<Header,Parent>::type()const{
+    template <typename Header>
+    uint8_t PageView<Header>::type()const{
         return header().type;
     }
-    template <typename Header, typename Parent>
-    void PageView<Header,Parent>::dump(){
+    template <typename Header>
+    void PageView<Header>::dump(){
         uint16_t* ptr = (uint16_t*)(data_+ header().freeList);
         uint16_t bound = 0;
         while(ptr!=(uint16_t*)data_){
@@ -107,8 +107,8 @@ namespace detail{
             //auto * pCell = view_cast<Cell*>(data_+offset);
         }
     }
-    template <typename Header, typename Parent>
-    void* PageView<Header,Parent>::allocCell(size_t sz){
+    template <typename Header>
+    void* PageView<Header>::allocCell(size_t sz){
         LOG_TRACE << "allocCell(" << sz <<")";
         auto & h = header();
         bool isTop = false;
@@ -187,8 +187,8 @@ namespace detail{
         pCell->capacity = fragment? cellSz: sz;
         return pCell->data;
     }
-    template <typename Header, typename Parent>
-    void* PageView<Header,Parent>::allocCellAt(size_t idx,size_t sz){
+    template <typename Header>
+    void* PageView<Header>::allocCellAt(size_t idx,size_t sz){
         auto & h = header();
         auto nCells = h.nCells;
         if (nCells < idx){
@@ -201,8 +201,8 @@ namespace detail{
         }
         return ret;
     }
-    template <typename Header, typename Parent>
-    void PageView<Header,Parent>::dropCell(size_t idx){
+    template <typename Header>
+    void PageView<Header>::dropCell(size_t idx){
         auto & h = header();
         if (idx>=h.nCells){
             throw Exception("out of range");
@@ -252,8 +252,8 @@ namespace detail{
             prevFreeBlock->size += (4+newFreeBlock->size);
         }
     }
-    template <typename Header, typename Parent>
-    StringView PageView<Header,Parent>::getCell(size_t sz)const {
+    template <typename Header>
+    StringView PageView<Header>::getCell(size_t sz)const {
         auto & h = header();
         if (sz >= h.nCells){
             throw Exception("index out of range");
@@ -261,8 +261,8 @@ namespace detail{
         auto* pCell = (Cell*)(data_ + h.cells[sz]);
         return StringView{pCell->data,pCell->size};
     }
-    template <typename Header, typename Parent>
-    void PageView<Header,Parent>::sanityCheck()
+    template <typename Header>
+    void PageView<Header>::sanityCheck()
     {
         enum ErrorType{Overlap,Missing,OutOfRange};
         enum RangeType{Free,Alloced,HeaderTrunk};
@@ -386,8 +386,8 @@ namespace detail{
         }
         throw Exception("sanityCheck failed");
     }
-    template <typename Header, typename Parent>
-    void PageView<Header,Parent>::format()
+    template <typename Header>
+    void PageView<Header>::format()
     {
         //::bzero(&header(), sizeof(Header));
         ::bzero(data_,pageSz_);
@@ -397,8 +397,8 @@ namespace detail{
         pFreeBlock->next = 0;
         pFreeBlock->size = pageSz_ - sizeof(Header)- sizeof(FreeBlock);
     }
-    template <typename Header, typename Parent>
-    bool PageView<Header,Parent>::hasChildren()const{
+    template <typename Header>
+    bool PageView<Header>::hasChildren()const{
         return header().hasChildren;
     }
 
@@ -421,13 +421,31 @@ namespace detail{
     void DataPageView::setParent(uint32_t parent){
         header().parent=parent;
     }
+    uint32_t InternalPageView::prev()const{
+        return header().prev;
+    }
+    uint32_t InternalPageView::next()const{
+        return header().next;
+    }
+    uint32_t InternalPageView::parent()const{
+        return header().parent;
+    }
+    void InternalPageView::setNext(uint32_t next){
+        header().next = next;
+    }
+    void InternalPageView::setPrev(uint32_t prev){
+        header().prev=prev;
+    }
+    void InternalPageView::setParent(uint32_t parent){
+        header().parent=parent;
+    }
 
     void RootPageView::setHasChildren(bool hasChildren){
         header().hasChildren = hasChildren;
     }
 
     //explicit instantiate
-    template class PageView<RootPageHeader,void>;
-    template class PageView<InternalPageHeader,RootPageView>;
-    template class PageView<DataPageHeader,InternalPageView>;
+    template class PageView<RootPageHeader>;
+    template class PageView<InternalPageHeader>;
+    template class PageView<DataPageHeader>;
 }

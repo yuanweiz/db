@@ -25,6 +25,7 @@ public:
         bool operator!=(const iterator&);
         private:
         iterator(uint16_t, PageAllocatorBase*,const PagePtr&);
+        void rewindIfOverflow();
         uint16_t cellIdx_;
         PageAllocatorBase* pageAllocator_;
         PagePtr tie_;
@@ -34,14 +35,16 @@ public:
     iterator begin();
     iterator end();
 private:
-    iterator insert( detail::RootPageView& ,StringView );
-    iterator insert( detail::DataPageView& ,StringView );
-    template <class T> iterator insertIntoPage(PagePtr&,StringView);
+    PagePtr findPageByTuple(StringView, PagePtr& start);
+    template <class T>
+    PagePtr findPageByKey(StringView, T& start);
+    template <class T>
+    iterator insert( T& ,StringView ,PageNo_t);
     template <class View>
-        iterator insertAndSplitPage(View& view, StringView newTuple);
-    //special overload for root page
-    iterator insertAndSplitPage(detail::RootPageView& view, StringView newTuple);
-    iterator insertAndSplitPage(detail::DataPageView& view, StringView newTuple);
+        uint16_t insert_point(View& , StringView );
+    template <class View>
+        iterator insertAndSplitPage(View& view,PageNo_t, StringView newTuple, uint16_t );
+    iterator insertAndSplitPage(detail::RootPageView& view,PageNo_t, StringView , uint16_t );
     void split( detail::RootPageView& );
     PageAllocatorBase* pageAllocator_;
     PagePtr root_;
