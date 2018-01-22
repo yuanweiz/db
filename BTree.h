@@ -5,6 +5,11 @@
 #include <StringView.h>
 #include <PagePtr.h>
 class PageAllocatorBase;
+namespace detail{
+    class RootPageView;
+    class InternalPageView;
+    class DataPageView;
+}
 class BTree{
 public:
     using TupleComparator = std::function<bool(StringView,StringView)>;
@@ -29,6 +34,15 @@ public:
     iterator begin();
     iterator end();
 private:
+    iterator insert( detail::RootPageView& ,StringView );
+    iterator insert( detail::DataPageView& ,StringView );
+    template <class T> iterator insertIntoPage(PagePtr&,StringView);
+    template <class View>
+        iterator insertAndSplitPage(View& view, StringView newTuple);
+    //special overload for root page
+    iterator insertAndSplitPage(detail::RootPageView& view, StringView newTuple);
+    iterator insertAndSplitPage(detail::DataPageView& view, StringView newTuple);
+    void split( detail::RootPageView& );
     PageAllocatorBase* pageAllocator_;
     PagePtr root_;
     TupleComparator tupleCmp_;

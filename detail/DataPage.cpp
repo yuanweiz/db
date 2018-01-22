@@ -27,6 +27,7 @@ namespace detail{
         uint8_t type;
         uint8_t hasChildren;
         uint16_t freeList;
+        uint32_t parent;
         uint32_t next;
         uint32_t prev;
         uint16_t nFragment; // number of free bytes
@@ -39,6 +40,7 @@ namespace detail{
         uint8_t type;
         uint8_t hasChildren;
         uint16_t freeList;
+        uint32_t parent;
         uint32_t next;
         uint32_t prev;
         uint16_t nFragment; // number of free bytes
@@ -56,7 +58,7 @@ namespace detail{
         uint16_t size;
         char data[0];
     };
-    static_assert( sizeof (DataPageHeader) == 16, "wrong memory layout");
+    static_assert( sizeof (DataPageHeader) == 20, "wrong memory layout");
     static_assert( sizeof (FreeBlock) == 4, "wrong memory layout");
     static_assert( sizeof (Cell) == 4, "wrong memory layout");
 
@@ -65,6 +67,10 @@ namespace detail{
         return header().nCells;
     }
 
+    template <typename Header, typename Parent>
+    uint8_t PageView<Header,Parent>::type()const{
+        return header().type;
+    }
     template <typename Header, typename Parent>
     void PageView<Header,Parent>::dump(){
         uint16_t* ptr = (uint16_t*)(data_+ header().freeList);
@@ -402,6 +408,18 @@ namespace detail{
     }
     uint32_t DataPageView::next()const{
         return header().next;
+    }
+    uint32_t DataPageView::parent()const{
+        return header().parent;
+    }
+    void DataPageView::setNext(uint32_t next){
+        header().next = next;
+    }
+    void DataPageView::setPrev(uint32_t prev){
+        header().prev=prev;
+    }
+    void DataPageView::setParent(uint32_t parent){
+        header().parent=parent;
     }
 
     void RootPageView::setHasChildren(bool hasChildren){

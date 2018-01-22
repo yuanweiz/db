@@ -28,6 +28,7 @@ public:
     void dump();
     StringView getCell(size_t)const;
     uint32_t next();
+    uint8_t type()const;
 protected:
     struct FreeBlockIterator;
     template <class T>
@@ -64,6 +65,7 @@ class InternalPageView:
 {
     public:
     static constexpr uint8_t TYPE=2;
+    uint32_t parent();
 };
 class DataPageView : 
     public PageView<DataPageHeader,InternalPageView>
@@ -72,8 +74,13 @@ public:
     static constexpr uint8_t TYPE=3;
     using Base =PageView<DataPageHeader,InternalPageView>;
     using Base::Base;
+    uint32_t parent();
     uint32_t prev()const;
     uint32_t next()const;
+    void setNext(uint32_t);
+    void setPrev(uint32_t);
+    uint32_t parent()const;
+    void setParent(uint32_t);
 };
 
 }
