@@ -30,6 +30,11 @@ inline void fillRandomData(void* dst_,size_t size){
 }
 class MockPageAllocator: public PageAllocatorBase{
 public:
+    MockPageAllocator(){
+        PageSz_t sz(4096);
+        PageNo_t page(0);
+        pages_[0].reset(PageData::allocMemory(page,sz));
+    }
     PagePtr forceAllocate( PageNo_t page)override{
         auto & pagePtr = pages_[page];
         if (pagePtr){

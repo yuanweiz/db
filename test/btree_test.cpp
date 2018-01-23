@@ -53,7 +53,10 @@ TEST_F(BTreeTest, OnlyOnePage){
 }
 TEST_F(BTreeTest, ManyPages){
     std::vector<std::string> sortedStrings{randomStrings(100,200)}, actual;
+    size_t i=0;
     for (auto & str: sortedStrings){
+        ++i;
+        printf("inserting %luth string\n",i);
         btree_->insert(str);
     }
     for (auto && strView: *btree_){
