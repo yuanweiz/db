@@ -3,21 +3,26 @@
 #include <StringView.h>
 #include <PagePtr.h>
 #include <BTree.h>
-#include <detail/DataPage.h>
+//#include <detail/DataPage.h>
+#include <utility>
+#include <Types.h>
 #include <memory>
-using TupleComparator = BTree::TupleComparator;
-using KeyComparator = BTree::KeyComparator;
-using RetrieveKeyFunc = BTree::RetrieveKeyFunc;
+class PageAllocatorBase;
+namespace detail{
 struct PageProxy{
+    using KeyComparator = BTree::KeyComparator;
+    using TupleComparator = BTree::TupleComparator;
+    using RetrieveKeyFunc = BTree::RetrieveKeyFunc;
     explicit PageProxy(PagePtr&);
     ~PageProxy(){}
 
     static std::unique_ptr<PageProxy> fromPagePtr(PagePtr&);
-    virtual void insert(StringView, const TupleComparator&,
-            const KeyComparator&,const RetrieveKeyFunc&);
-    virtual PagePtr findPageByTuple(StringView, const TupleComparator&,const KeyComparator&,const RetrieveKeyFunc&);
+    virtual std::pair<uint16_t,PagePtr> insert(StringView, const TupleComparator&,
+            const KeyComparator&,const RetrieveKeyFunc&, PageAllocatorBase*)=0;
     PagePtr pagePtr_;
+    PageNo_t pageNo();
 };
+}
 
 
 #endif //__BTREE_HELPER_H

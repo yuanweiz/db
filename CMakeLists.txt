@@ -15,7 +15,7 @@ set (SOURCE
     Value.cpp 
     TableRow.cpp 
     ${CMAKE_CURRENT_SOURCE_DIR}/detail/DataPage.cpp
-    #${CMAKE_CURRENT_SOURCE_DIR}/detail/SortedFile.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/detail/BTreeHelper.cpp
     )
     
 add_library (db ${SOURCE})
