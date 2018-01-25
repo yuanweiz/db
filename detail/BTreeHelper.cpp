@@ -39,18 +39,18 @@ template <typename Proxy> class Splitter<Proxy,false>{
     public:
     Result split(Proxy& rootView, StringView strView,
             const TupleComparator& tupleCmp,const KeyComparator&keyCmp, 
-            const RetrieveKeyFunc& retrieveKey,PageAllocatorBase* allocator,int16_t i);
+            const RetrieveKeyFunc& retrieveKey,PageAllocatorBase* allocator,bool insertTuple);
+    Result insertTupleAndSplit(Proxy& rootView, StringView strView,
+            const TupleComparator& tupleCmp, PageAllocatorBase* allocator);
+    Result insertIndexAndSplit(Proxy& rootView, StringView strView,
+            const KeyComparator& keyCmp, PageAllocatorBase* allocator);
     template <class Child> void setUpChildren(Proxy& root,Child& leftChild, Child& rightChild);
 };
 template <typename Proxy> class Splitter<Proxy,true>{
     public:
     Result split(Proxy& pageView, StringView strView,
             const TupleComparator& tupleCmp,const KeyComparator&keyCmp, 
-            const RetrieveKeyFunc& retrieveKey,PageAllocatorBase* allocator,int16_t i){
-        assert(false);
-        divide_point(pageView);
-        return {0,0};
-    }
+            const RetrieveKeyFunc& retrieveKey,PageAllocatorBase* allocator,bool insertTuple);
 };
 
 template <class View>
@@ -77,7 +77,7 @@ template <typename Proxy> struct Inserter<Proxy,true>{
         i=insert_point(proxy,strView,tupleCmp);
         void * dst=proxy.allocCellAt(i,strView.size());
         if (!dst){
-            return Splitter<Proxy>{}.split(proxy,strView,tupleCmp,keyCmp,retrieveKey,allocator,i);
+            return Splitter<Proxy>{}.split(proxy,strView,tupleCmp,keyCmp,retrieveKey,allocator,true);
         }
         else {
             ::memcpy(dst,toBeInserted.data(),toBeInserted.size());
@@ -120,6 +120,9 @@ struct PageProxyImpl: public PageProxy,public T{
     static const bool HasParent = _HasParent;
     virtual Result insert(StringView strView, const TupleComparator& tupleCmp,const KeyComparator& keyCmp, const RetrieveKeyFunc& retrieveKey,PageAllocatorBase*allocator) override{
         return Inserter<PageProxyImpl>{}.insert(*this,strView,tupleCmp,keyCmp,retrieveKey,allocator);
+    }
+    virtual Result split(StringView strView, const TupleComparator& tupleCmp,const KeyComparator& keyCmp, const RetrieveKeyFunc& retrieveKey,PageAllocatorBase*allocator,bool insertTuple) override{
+        return Splitter<PageProxyImpl>{}.split(*this,strView,tupleCmp,keyCmp,retrieveKey,allocator,insertTuple);
     }
 };
 
@@ -213,10 +216,12 @@ setUpChildren(Proxy& root,Child& leftChild, Child& rightChild){
 template <class Proxy>
 Result Splitter<Proxy,false>::split(Proxy& root, StringView strView,
         const TupleComparator& tupleCmp,const KeyComparator&keyCmp, 
-        const RetrieveKeyFunc& retrieveKey,PageAllocatorBase* allocator, int16_t){
+        const RetrieveKeyFunc& retrieveKey,PageAllocatorBase* allocator, bool insertTuple){
     auto leftChildPage = allocator->allocate();
     auto rightChildPage = allocator->allocate();
     std::string payload;
+    //assert(insertTuple == Proxy::ContainsRecord);
+    (void)insertTuple;
     if (Proxy::ContainsRecord){
         DataPage leftChild(leftChildPage);
         DataPage rightChild(rightChildPage);
@@ -245,6 +250,40 @@ Result Splitter<Proxy,false>::split(Proxy& root, StringView strView,
     }
     auto newRoot = PageProxy::fromPagePtr(root.pagePtr_);
     return newRoot->insert(strView,tupleCmp,keyCmp,retrieveKey,allocator);
+}
+template <typename Proxy>
+Result Splitter<Proxy,true>::split(Proxy& pageView, StringView strView,
+        const TupleComparator& tupleCmp,const KeyComparator&keyCmp, 
+        const RetrieveKeyFunc& retrieveKey,PageAllocatorBase* allocator,bool ){
+    auto i=divide_point(pageView);
+    auto newPage = allocator->allocate();
+    Proxy sibling(newPage);
+    sibling.format();
+    //transfer cells to sibling
+    decltype(i) j =0;
+    while(pageView.numOfCells()!=i){
+        auto cell = pageView.getCell(i);
+        void * dst = sibling.allocCellAt(j++,cell.size());
+        ::memcpy(dst,cell.data(),cell.size());
+        pageView.dropCell(i);
+    }
+    sibling.setNext(pageView.next());
+    sibling.setPrev(pageView.pageNo());
+    sibling.setParent(pageView.parent());
+    pageView.setNext(sibling.pageNo());
+    PageNo_t parent (pageView.parent());
+    auto parentPage = allocator->getPage(parent);
+    auto parentProxy = PageProxy::fromPagePtr(parentPage);
+    parentProxy->split(strView,tupleCmp,keyCmp,retrieveKey,allocator,Proxy::ContainsRecord);
+    return {0,0};
+}
+template <typename Proxy>
+Result Splitter<Proxy,false>::insertIndexAndSplit(Proxy& rootView, StringView strView,
+        const KeyComparator& keyCmp, PageAllocatorBase* allocator){
+}
+template <typename Proxy>
+Result Splitter<Proxy,false>::insertTupleAndSplit(Proxy& rootView, StringView strView,
+        const TupleComparator& keyCmp, PageAllocatorBase* allocator){
 }
 
 //template <class Proxy>
