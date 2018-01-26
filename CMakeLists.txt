@@ -2,10 +2,12 @@ cmake_minimum_required(VERSION 2.6)
 set (SOURCE
     ${SOURCE}
     Pager.cpp 
+    BTree.cpp
     PagePtr.cpp
     PageAllocator.cpp
     Codec.cpp
     Exception.cpp 
+    FileSystem.cpp
     Logging.cpp
     Buffer.cpp
     StringView.cpp
@@ -13,7 +15,7 @@ set (SOURCE
     Value.cpp 
     TableRow.cpp 
     ${CMAKE_CURRENT_SOURCE_DIR}/detail/DataPage.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/detail/SortedFile.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/detail/BTreeHelper.cpp
     )
     
 add_library (db ${SOURCE})

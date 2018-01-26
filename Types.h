@@ -15,7 +15,7 @@ DataType storageClassToDataType(StorageClass);
 class PageSz_t {
 public:
     PageSz_t()=default;
-    PageSz_t(const PageSz_t&)=default;
+    PageSz_t(const PageSz_t& rhs):v_(rhs.v_){}
     explicit PageSz_t(uint32_t v):v_(v){}
     operator uint32_t()const{
         return v_;
@@ -26,7 +26,7 @@ private:
 class PageNo_t {
 public:
     PageNo_t()=default;
-    PageNo_t(const PageNo_t&)=default;
+    PageNo_t(const PageNo_t&rhs):v_(rhs.v_){}
     explicit PageNo_t(uint32_t v):v_(v){}
     operator uint32_t()const{
         return v_;

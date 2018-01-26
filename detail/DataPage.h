@@ -5,36 +5,31 @@
 #include <PagePtr.h>
 #include <StringView.h>
 namespace detail{
-struct Header;
-class DataPageView{
+struct DataPageHeader;
+struct RootPageHeader;
+struct InternalPageHeader;
+
+template <typename Header>
+class PageView{
 public:
-    //explicit DataPageView( PagePtr& pagePtr)
-    //    :data_(pagePtr->getNonConst()),
-    //    pageSz_(pagePtr->pageSize())
-    explicit DataPageView(  void* data,size_t pageSz)
+    explicit PageView(  void* data,size_t pageSz)
         :data_(static_cast<char*>(data)),
         pageSz_(pageSz)
     {
     }
     void format();
 
-    void* allocCell(size_t );
+    void* allocCell(size_t ); //for unsorted file maybe?
+    void* allocCellAt(size_t idx, size_t sz);
+    bool hasChildren()const; // for root page it can be true/false, otherwise false
     void dropCell(size_t idx);
     uint16_t numOfCells()const;
     void sanityCheck();
     void dump();
-private:
-    void checkAccessViolation(uint16_t ptr){
-        assert(ptr < pageSz_);(void)ptr;
-    }
-    void checkAccessViolation(void* ptr){
-        assert(ptr < data_ + pageSz_);(void)ptr;
-    }
-    void checkAccessViolation(uint16_t ptr,uint16_t sz){
-        assert(ptr < pageSz_);(void)ptr;
-        assert(ptr + sz <= pageSz_); (void)sz;
-    }
     StringView getCell(size_t)const;
+    uint32_t next();
+    uint8_t type()const;
+protected:
     struct FreeBlockIterator;
     template <class T>
         T view_cast(void * ptr){
@@ -56,5 +51,43 @@ private:
     char * data_;
     const size_t pageSz_;
 };
+class RootPageView: 
+    public PageView<RootPageHeader>
+{
+    public:
+    static constexpr uint8_t TYPE=1;
+    void setHasChildren(bool);
+    using Base = PageView<RootPageHeader>;
+    using Base::Base;
+};
+class InternalPageView: 
+    public PageView<InternalPageHeader>
+{
+    public:
+    static constexpr uint8_t TYPE=2;
+    using Base= PageView<InternalPageHeader>;
+    using Base::Base;
+    uint32_t prev()const;
+    uint32_t next()const;
+    void setNext(uint32_t);
+    void setPrev(uint32_t);
+    uint32_t parent() const;
+    void setParent(uint32_t);
+};
+class DataPageView : 
+    public PageView<DataPageHeader>
+{
+public:
+    static constexpr uint8_t TYPE=3;
+    using Base =PageView<DataPageHeader>;
+    using Base::Base;
+    uint32_t prev()const;
+    uint32_t next()const;
+    void setNext(uint32_t);
+    void setPrev(uint32_t);
+    uint32_t parent()const;
+    void setParent(uint32_t);
+};
+
 }
 #endif// __DATAPAGE_H

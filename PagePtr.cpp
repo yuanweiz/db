@@ -6,20 +6,22 @@
 #include "Types.h"
 using namespace std;
 
-PageData* PageData::allocMemory(FILE* fp,PageNo_t page,PageSz_t sz){
-    auto oldPos = ::ftell(fp);
-    auto offset = sz*page;
-    ::fseek(fp,offset,SEEK_SET);
+PageData* PageData::allocMemory(PageNo_t page,PageSz_t sz){
     size_t trunkSize = sizeof(PageData)+sz;
     auto rawPtr = static_cast<PageData*>(malloc(trunkSize));
     ::bzero(rawPtr, trunkSize);
     rawPtr->dirty = false;
     rawPtr->pageNo_ = page;
     rawPtr->pageSize_ = sz;
-    //PagePtr ptr(page,sz,cb);
+    return rawPtr;
+}
+PageData* PageData::allocMemory(FILE* fp,PageNo_t page,PageSz_t sz){
+    auto oldPos = ::ftell(fp);
+    auto offset = sz*page;
+    ::fseek(fp,offset,SEEK_SET);
+    auto * rawPtr = PageData::allocMemory(page,sz);
     char * p = rawPtr->buf;
     fread(p,1,sz,fp);
-    //no need to append zeros
     ::fseek(fp,oldPos,SEEK_SET);
     return rawPtr;
 }

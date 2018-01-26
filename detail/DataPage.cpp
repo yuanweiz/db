@@ -9,71 +9,70 @@
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 namespace detail{
-    struct Header{
-        uint16_t type;
+    class NonConstructable{
+        NonConstructable()=delete;
+    };
+    struct RootPageHeader : NonConstructable{
+        static constexpr auto TYPE=RootPageView::TYPE;
+        uint8_t type;
+        uint8_t hasChildren;
         uint16_t freeList;
-        uint32_t next;
         uint16_t nFragment; // number of free bytes
         uint16_t nCells;
         uint16_t cells[0];
-    private:
-        Header(){} //non constructable
     };
-    struct FreeBlock{
+
+    struct InternalPageHeader : NonConstructable{
+        static constexpr auto TYPE=InternalPageView::TYPE;
+        uint8_t type;
+        uint8_t hasChildren;
+        uint16_t freeList;
+        uint32_t parent;
+        uint32_t next;
+        uint32_t prev;
+        uint16_t nFragment; // number of free bytes
+        uint16_t nCells;
+        uint16_t cells[0];
+    };
+
+    struct DataPageHeader :NonConstructable{
+        static constexpr auto TYPE=DataPageView::TYPE;
+        uint8_t type;
+        uint8_t hasChildren;
+        uint16_t freeList;
+        uint32_t parent;
+        uint32_t next;
+        uint32_t prev;
+        uint16_t nFragment; // number of free bytes
+        uint16_t nCells;
+        uint16_t cells[0];
+    };
+
+    struct FreeBlock :NonConstructable{
         uint16_t next; 
         uint16_t size; // non-inclusive
         char data[0];
-    private:
-        FreeBlock(){}
     };
-    struct Cell{
+    struct Cell : NonConstructable{
         uint16_t capacity;
         uint16_t size;
         char data[0];
-    private:
-        Cell(){}
     };
-    static_assert( sizeof (Header) == 12, "wrong memory layout");
+    static_assert( sizeof (DataPageHeader) == 20, "wrong memory layout");
     static_assert( sizeof (FreeBlock) == 4, "wrong memory layout");
     static_assert( sizeof (Cell) == 4, "wrong memory layout");
 
-    uint16_t DataPageView::numOfCells()const{
+    template<typename Header>
+    uint16_t PageView<Header>::numOfCells()const{
         return header().nCells;
     }
-    struct DataPageView::FreeBlockIterator{
-        using Self = FreeBlockIterator;
-        explicit FreeBlockIterator(DataPageView * view)
-            :view_(*view)
-        {
-            ptr_ = view_.header().freeList;
-        }
-        FreeBlockIterator(const Self&rhs)=default;
-        FreeBlockIterator(DataPageView * view, int)
-            :view_(*view)
-        {
-            ptr_ = 0;
-        }
-        FreeBlock& operator*()const {
-            return *view_.view_cast<FreeBlock*>
-                (view_.data_+ptr_);
-        }
-        Self & operator++(){
-            auto * data = view_.data_;
-            auto * pFreeBlock = view_.view_cast
-                <FreeBlock*>(data+ptr_);
-            ptr_ = pFreeBlock->next;
-            return *this;
-        }
-        bool operator==(const Self& rhs){
-            return &view_ == &rhs.view_ && ptr_ == rhs.ptr_;
-        }
-        bool operator!=(const Self&rhs){
-            return !(*this == rhs);
-        }
-        DataPageView& view_;
-        uint16_t ptr_;
-    };
-    void DataPageView::dump(){
+
+    template <typename Header>
+    uint8_t PageView<Header>::type()const{
+        return header().type;
+    }
+    template <typename Header>
+    void PageView<Header>::dump(){
         uint16_t* ptr = (uint16_t*)(data_+ header().freeList);
         uint16_t bound = 0;
         while(ptr!=(uint16_t*)data_){
@@ -108,7 +107,8 @@ namespace detail{
             //auto * pCell = view_cast<Cell*>(data_+offset);
         }
     }
-    void* DataPageView::allocCell(size_t sz){
+    template <typename Header>
+    void* PageView<Header>::allocCell(size_t sz){
         LOG_TRACE << "allocCell(" << sz <<")";
         auto & h = header();
         bool isTop = false;
@@ -187,7 +187,22 @@ namespace detail{
         pCell->capacity = fragment? cellSz: sz;
         return pCell->data;
     }
-    void DataPageView::dropCell(size_t idx){
+    template <typename Header>
+    void* PageView<Header>::allocCellAt(size_t idx,size_t sz){
+        auto & h = header();
+        auto nCells = h.nCells;
+        if (nCells < idx){
+            throw Exception("wrong index");
+        }
+        void * ret= allocCell(sz);
+        if (ret){
+            assert(nCells + 1 == h.nCells);
+            std::rotate(h.cells+idx,h.cells+nCells, h.cells+h.nCells);
+        }
+        return ret;
+    }
+    template <typename Header>
+    void PageView<Header>::dropCell(size_t idx){
         auto & h = header();
         if (idx>=h.nCells){
             throw Exception("out of range");
@@ -237,18 +252,20 @@ namespace detail{
             prevFreeBlock->size += (4+newFreeBlock->size);
         }
     }
-    StringView DataPageView::getCell(size_t sz)const {
+    template <typename Header>
+    StringView PageView<Header>::getCell(size_t sz)const {
         auto & h = header();
         if (sz >= h.nCells){
             throw Exception("index out of range");
         }
-        auto* pCell = (Cell*)data_ + h.cells[sz];
+        auto* pCell = (Cell*)(data_ + h.cells[sz]);
         return StringView{pCell->data,pCell->size};
     }
-    void DataPageView::sanityCheck()
+    template <typename Header>
+    void PageView<Header>::sanityCheck()
     {
         enum ErrorType{Overlap,Missing,OutOfRange};
-        enum RangeType{Free,Alloced,Header};
+        enum RangeType{Free,Alloced,HeaderTrunk};
         struct Error{
             ErrorType type;
             int start;
@@ -279,7 +296,7 @@ namespace detail{
         std::vector<Error> errors;
         auto & h = header();
         int headerSize = offset_of(h.cells) + sizeof(uint16_t)*h.nCells;
-        ranges.push_back({RangeType::Header,0,headerSize});
+        ranges.push_back({RangeType::HeaderTrunk,0,headerSize});
         uint16_t* ptr = (uint16_t*)(data_+h.freeList);
         while((void*)ptr!=data_){
             auto * pFreeBlock = (FreeBlock*) ptr;
@@ -324,7 +341,7 @@ namespace detail{
         std::sort(ranges.begin(),ranges.end(),cmp);
         for (auto range : ranges){
             switch(range.type){
-                case RangeType::Header:
+                case RangeType::HeaderTrunk:
                     LOG_DEBUG << "Header: ("<<range.start <<","<< range.end<<")";
                     break;
                 case RangeType::Alloced:
@@ -369,14 +386,66 @@ namespace detail{
         }
         throw Exception("sanityCheck failed");
     }
-    void DataPageView::format()
+    template <typename Header>
+    void PageView<Header>::format()
     {
         //::bzero(&header(), sizeof(Header));
         ::bzero(data_,pageSz_);
-        header().type = 1;
+        header().type = Header::TYPE;
         header().freeList = sizeof(Header);
         auto * pFreeBlock = view_cast<FreeBlock*>(data_+header().freeList);
         pFreeBlock->next = 0;
         pFreeBlock->size = pageSz_ - sizeof(Header)- sizeof(FreeBlock);
     }
+    template <typename Header>
+    bool PageView<Header>::hasChildren()const{
+        return header().hasChildren;
+    }
+
+
+    uint32_t DataPageView::prev()const{
+        return header().prev;
+    }
+    uint32_t DataPageView::next()const{
+        return header().next;
+    }
+    uint32_t DataPageView::parent()const{
+        return header().parent;
+    }
+    void DataPageView::setNext(uint32_t next){
+        header().next = next;
+    }
+    void DataPageView::setPrev(uint32_t prev){
+        header().prev=prev;
+    }
+    void DataPageView::setParent(uint32_t parent){
+        header().parent=parent;
+    }
+    uint32_t InternalPageView::prev()const{
+        return header().prev;
+    }
+    uint32_t InternalPageView::next()const{
+        return header().next;
+    }
+    uint32_t InternalPageView::parent()const{
+        return header().parent;
+    }
+    void InternalPageView::setNext(uint32_t next){
+        header().next = next;
+    }
+    void InternalPageView::setPrev(uint32_t prev){
+        header().prev=prev;
+    }
+    void InternalPageView::setParent(uint32_t parent){
+        header().parent=parent;
+    }
+
+    void RootPageView::setHasChildren(bool hasChildren){
+        header().hasChildren = hasChildren;
+    }
+
+    //explicit instantiate
+    template class PageView<RootPageHeader>;
+    template class PageView<InternalPageHeader>;
+    template class PageView<DataPageHeader>;
 }

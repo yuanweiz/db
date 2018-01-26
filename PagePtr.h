@@ -20,6 +20,7 @@ public:
     }
     PageNo_t pageNo() const noexcept{return pageNo_;}
     PageSz_t pageSize() const noexcept{return pageSize_;}
+    static PageData* allocMemory(PageNo_t,PageSz_t); //for mock object
 private:
     static PageData* allocMemory(FILE*,PageNo_t,PageSz_t);
     PageSz_t pageSize_;

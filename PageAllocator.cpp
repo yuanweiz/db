@@ -12,6 +12,14 @@ const uint32_t kPageSize = 4096;
 const uint32_t kSuperBlockNo = 0;
 const uint32_t kPagesPerGroup = kPageSize*8;
 const char kMagic[] = "WZDB";
+
+PagePtr PageAllocatorBase::getPage(PageNo_t pageNo){
+    if (pageNo == 0){
+        return nullptr;
+    }
+    return this->getPageImpl(pageNo);
+}
+
 class PageAllocator::Impl{
 public:
     explicit Impl(const string& fname)
@@ -52,7 +60,7 @@ public:
         lastAlloc_ =nGroups*kPagesPerGroup+2;
         return pager_.getPage(PageNo_t(lastAlloc_));
     }
-    PagePtr forceAllocPage(size_t ){
+    PagePtr forceAllocPage(PageNo_t ){
         return PagePtr();
     }
 
@@ -139,7 +147,7 @@ PagePtr PageAllocator::allocate(){
     return pImpl_->allocPage();
 }
 
-PagePtr PageAllocator::forceAllocate(size_t pageNo){
+PagePtr PageAllocator::forceAllocate(PageNo_t pageNo){
     return pImpl_->forceAllocPage(pageNo);
 }
 void PageAllocator::deallocate(PagePtr& ptr){
@@ -150,5 +158,8 @@ uint32_t PageAllocator::maxGroup()const{
     return pImpl_->maxGroup();
 }
 
+PagePtr PageAllocator::getPageImpl(PageNo_t){
+    return PagePtr();
+}
 PageAllocator::~PageAllocator(){
 }
