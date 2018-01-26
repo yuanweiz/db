@@ -5,41 +5,49 @@
 #include <memory>
 #include <StringView.h>
 #include <PagePtr.h>
-class PageAllocatorBase;
+
+class Cursor{
+    public:
+        Cursor(Cursor&&)=default;
+        StringView operator*() const;
+        Cursor& operator++();
+        bool operator!=(const Cursor&);
+        ~Cursor();
+    protected:
+        class Impl;
+        static Cursor fromPimpl(Impl*);
+    private:
+        std::unique_ptr<Impl> pImpl_;
+};
 class File{
     public:
-        friend class FileSystem;
-        class iterator{
-            friend class File;
-            public:
-            StringView operator*() const;
-            iterator& operator++();
-            bool operator!=(const iterator&);
-            private:
-            iterator(uint16_t, PageAllocatorBase*,const PagePtr&);
-            uint16_t cellIdx_;
-            PageAllocatorBase* pageAllocator_;
-            PagePtr tie_;
-        };
+        File(File&&)=default;
         using KeyComparator = std::function<bool(StringView,StringView)>;
         using RetrieveKeyFunc = std::function<StringView(StringView)>;
-        iterator insert(StringView,const KeyComparator&); 
-        iterator find(StringView, const KeyComparator&);
-        iterator erase(StringView, const KeyComparator&);
-        iterator begin();
-        iterator end();
+        Cursor insert(StringView,const KeyComparator&); 
+        Cursor find(StringView, const KeyComparator&);
+        Cursor erase(StringView, const KeyComparator&);
+        Cursor begin();
+        Cursor end();
         explicit File(const PagePtr&);
+        ~File();
+    protected:
+        class Impl;
+        static File fromPimpl(Impl*);
     private:
-        PageAllocatorBase* pageAllocator_;
-        PagePtr rootPage_;
+        std::unique_ptr<Impl> pImpl_;
 };
+
 class FileSystem{
     public:
-        explicit FileSystem(PageAllocatorBase*);
-        std::shared_ptr<File> openFile(const std::string &name);
+        FileSystem(FileSystem&&)=default;
+        File openFile(const std::string &name);
+        ~FileSystem();
+    protected:
+        class Impl;
+        static  FileSystem fromPimpl(Impl*);
     private:
-        void mountOrBuild();
-        PageAllocatorBase* pageAllocator_;
+        std::unique_ptr<Impl> pImpl_;
 };
 
 #endif// __FILESYSTEM_H

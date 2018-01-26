@@ -1,62 +1,60 @@
 #include <FileSystem.h>
-#include <PageAllocator.h>
-#include <detail/DataPage.h>
-using iterator = File::iterator;
-bool File::iterator::operator!=(const iterator& rhs){
-    return cellIdx_ == rhs.cellIdx_ && tie_ == rhs.tie_;
-};
+#include <detail/FileSystemImpl.h>
+#include <detail/FileImpl.h>
+#include <detail/CursorImpl.h>
 
-StringView iterator::operator*()const {
-    detail::DataPageView view(tie_->getNonConst(), tie_->pageSize());
-    return view.getCell(cellIdx_);
+// Cursor 
+StringView Cursor::operator*() const{
+    return pImpl_->get();
 }
 
-iterator& iterator::operator++(){
-    detail::DataPageView view(tie_->getNonConst(), tie_->pageSize());
-    if (++cellIdx_ == view.numOfCells()){
-        tie_ = pageAllocator_->getPage( PageNo_t(view.next()));
-        cellIdx_ = 0;
-    }
+Cursor& Cursor::operator++(){
+    pImpl_->advance();
     return *this;
 }
 
-iterator::iterator(uint16_t cellIdx, PageAllocatorBase* pageAllocator,const PagePtr& tie)
-    :cellIdx_(cellIdx),pageAllocator_(pageAllocator), tie_(tie)
+bool Cursor::operator!=(const Cursor& rhs){
+    return !(pImpl_->equals(*rhs.pImpl_));
+}
+
+Cursor::~Cursor(){
+}
+
+Cursor::Cursor(Cursor::Impl*pImpl)
+    :pImpl_(pImpl)
 {
 }
 
-iterator File::begin(){
-    return iterator(0,pageAllocator_, 
-            pageAllocator_->getPage(PageNo_t(0)));
+// FileSystem 
+FileSystem::~FileSystem(){
 }
-
-iterator File::end(){
-    return iterator(0,pageAllocator_, 
-            pageAllocator_->getPage(PageNo_t(0)));
+File FileSystem::openFile(const std::string &name){
+    return pImpl_->openFile(name);
 }
-
-File::File(const PagePtr& rootPage)
-    :rootPage_(rootPage)
+FileSystem::FileSystem(FileSystem::Impl* pimpl)
+    :pImpl_(pimpl)
 {
 }
 
+//File
+//Cursor File::insert(StringView,const KeyComparator&);
 
-iterator File::insert(StringView , const File::KeyComparator&){
-    return begin();
+//Cursor File::find(StringView strView, const File::KeyComparator&cmp){
+//    return pImpl_->find(strView,cmp);
+//}
+//Cursor erase(StringView, const KeyComparator&);
+Cursor File::begin(){
+    return pImpl_->begin();
 }
-void FileSystem::mountOrBuild(){
-}
-FileSystem::FileSystem(PageAllocatorBase* allocator)
-    :pageAllocator_(allocator){
-    }
 
-std::shared_ptr<File> FileSystem::openFile(const std::string& name){
-    if (name == "master"){
-        mountOrBuild();
-        auto rootPage = pageAllocator_->getPage(PageNo_t(2));
-        return std::make_shared<File>(std::move(rootPage));
-    }
-    else {
-        return nullptr;//TODO
-    }
+Cursor File::end(){
+    return pImpl_->end();
+}
+
+File::~File(){
+}
+
+File::File(Impl* pImpl)
+    :pImpl_(pImpl)
+{
 }
