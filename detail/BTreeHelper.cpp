@@ -280,10 +280,12 @@ Result Splitter<Proxy,true>::split(Proxy& pageView, StringView strView,
 template <typename Proxy>
 Result Splitter<Proxy,false>::insertIndexAndSplit(Proxy& rootView, StringView strView,
         const KeyComparator& keyCmp, PageAllocatorBase* allocator){
+    return {0,0};
 }
 template <typename Proxy>
 Result Splitter<Proxy,false>::insertTupleAndSplit(Proxy& rootView, StringView strView,
         const TupleComparator& keyCmp, PageAllocatorBase* allocator){
+    return {0,0};
 }
 
 //template <class Proxy>
